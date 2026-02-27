@@ -1,0 +1,32 @@
+﻿:host { display: block; height: 100%; width: 100%; }
+.map-view { height: calc(100vh - var(--topbar-h)); width: 100%; background: #082038; }
+
+/* toolbar floating on the right like the screenshot */
+.toolbar {
+  position: absolute;
+  z-index: 999;
+  background: linear-gradient(180deg, rgba(3,8,14,0.6), rgba(6,10,18,0.45));
+  color: var(--muted);
+  padding: 8px;
+  border-radius: 10px;
+  top: 96px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+}
+.toolbar button {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}

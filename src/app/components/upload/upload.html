@@ -1,0 +1,10 @@
+<div class="upload">
+  <div class="dropzone" (drop)="onDrop($event)" (dragover)="$event.preventDefault()">
+    <div>Select or drop files here</div>
+    <small>Supported: .kml .kmz .zip(.shp) .gpx .sqlite .mdb .gdb</small>
+    <input type="file" multiple (change)="onFile($event)" accept=".kml,.kmz,.zip,.gpx,.sqlite,.db,.mdb" />
+  </div>
+
+  <div *ngIf="uploading">Uploading... {{progress}}%</div>
+  <div class="msg">{{ message }}</div>
+</div>

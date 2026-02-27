@@ -36,7 +36,15 @@
             "regexp": "bundle generation (complete|failed)"
           }
         }
-      }
+      
+    },
+    {
+      "label": "Run with CMD",
+      "type": "shell",
+      "command": "cmd",
+      "args": ["/c", "npm start"],
+      "isBackground": true,
+      "problemMatcher": ["$tsc"]
     }
   ]
 }

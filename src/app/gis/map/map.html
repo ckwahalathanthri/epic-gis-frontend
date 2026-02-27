@@ -1,0 +1,10 @@
+<div class="toolbar">
+  <input type="file" (change)="uploadFile($event)" />
+  <button (click)="addFeatureLayer()">Add Feature Layer</button>
+  <button (click)="addKMLLayer()">Add KML</button>
+  <button (click)="showAttributes()">Show Attributes</button>
+</div>
+
+<div id="mapViewDiv" class="map-view"></div>
+
+<p>map works!</p>

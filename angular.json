@@ -22,6 +22,17 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@arcgis/core/assets",
+                "output": "assets"
+              }
+              ,
+              {
+                "glob": "**/*",
+                "input": "node_modules/cesium/Build/Cesium",
+                "output": "assets/cesium"
               }
             ],
             "styles": [
