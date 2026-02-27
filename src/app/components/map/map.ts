@@ -28,8 +28,8 @@ export class Map implements OnInit, OnDestroy { // Renamed from Map to MapCompon
         terrain: terrain,
         animation: false,
         timeline: false,
-        baseLayerPicker: false,
-        shouldAnimate: false,
+        baseLayerPicker: false, 
+        shouldAnimate: false, 
       });
 
       const arcgisProvider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
@@ -39,10 +39,10 @@ export class Map implements OnInit, OnDestroy { // Renamed from Map to MapCompon
     } catch (err) {
       console.error('Failed to create terrain, falling back:', err);
       this.viewer = new Cesium.Viewer(this.el.nativeElement.querySelector('#cesiumContainer'), {
-        animation: false,
-        timeline: false,
-        baseLayerPicker: false,
-        shouldAnimate: false,
+        animation: false, 
+        timeline: false, 
+        baseLayerPicker: false, 
+        shouldAnimate: false, 
       });
     }
   }
@@ -82,7 +82,7 @@ export class Map implements OnInit, OnDestroy { // Renamed from Map to MapCompon
     const ds = this.viewer.dataSources.getByName(dsName)[0];
     if (!ds) return null;
     const features: any[] = [];
-    ds.entities.values.forEach((e: any) => {
+    ds.entities.values.forEach((e: any) => {  
       // Cesium does not have a built-in static serialize method on GeoJsonDataSource.
       // You would typically use a library like toGeoJSON to convert entities back to GeoJSON.
     });
