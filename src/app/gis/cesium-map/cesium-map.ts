@@ -93,8 +93,8 @@ export class CesiumMapComponent implements OnInit, OnDestroy {
                 this.layerService.getGeoJson(urlOrId).subscribe({
                   next: (geo: any) => {
                     try {
-                      const blob = new Blob([JSON.stringify(geo)], { type: 'application/geo+json' });
-                      const tmpUrl = URL.createObjectURL(blob);
+                      const blob = new (window as any).Blob([JSON.stringify(geo)], { type: 'application/geo+json' });
+                      const tmpUrl = (window as any).URL.createObjectURL(blob);
                       this.addDataSourceFromUrl(tmpUrl).catch(err => this.showError('Failed to add fetched GeoJSON: ' + this.formatError(err)));
                     } catch (e) { this.showError('Invalid GeoJSON from backend'); }
                   },
@@ -105,15 +105,15 @@ export class CesiumMapComponent implements OnInit, OnDestroy {
               }
             }
           });
-        } catch (e) { console.warn('LayerService subscribe failed for Cesium', e); }
+        } catch (e) { (window as any).console && (window as any).console.warn && (window as any).console.warn('LayerService subscribe failed for Cesium', e); }
 
       } catch (err) {
         this.showError('Failed to create Cesium viewer: ' + this.formatError(err));
-        console.error('Failed to create Cesium viewer', err);
+        (window as any).console && (window as any).console.error && (window as any).console.error('Failed to create Cesium viewer', err);
       }
     }).catch(err => {
       this.showError('Failed to load Cesium script: ' + this.formatError(err));
-      console.error('Failed to load Cesium script', err);
+      (window as any).console && (window as any).console.error && (window as any).console.error('Failed to load Cesium script', err);
     });
   }
 
@@ -210,9 +210,9 @@ export class CesiumMapComponent implements OnInit, OnDestroy {
   }
 
   private showError(msg: string) {
-    console.error(msg);
+    (window as any).console && (window as any).console.error && (window as any).console.error(msg);
     this.errorMessage = typeof msg === 'string' ? msg : JSON.stringify(msg);
-    setTimeout(() => { this.errorMessage = ''; }, 6000);
+    (window as any).setTimeout(() => { this.errorMessage = ''; }, 6000);
   }
 
   private clearError() { this.errorMessage = ''; }
@@ -229,19 +229,19 @@ export class CesiumMapComponent implements OnInit, OnDestroy {
   private loadCesium(): Promise<void> {
     return new Promise((resolve, reject) => {
       if ((window as any).Cesium) return resolve();
-      const existing = document.getElementById('cesium-script');
+      const existing = (window as any).document.getElementById('cesium-script');
       if (existing) {
         existing.addEventListener('load', () => resolve());
         existing.addEventListener('error', (e: any) => reject(e));
         return;
       }
 
-      const script = document.createElement('script');
+      const script = (window as any).document.createElement('script');
       script.id = 'cesium-script';
       script.src = '/assets/cesium/Cesium.js';
       script.onload = () => resolve();
-      script.onerror = (e) => reject(e);
-      document.body.appendChild(script);
+      script.onerror = (e: any) => reject(e);
+      (window as any).document.body.appendChild(script);
     });
   }
 }

@@ -1,1 +1,26 @@
-<p>tools-panel works!</p>
+<section class="tools-panel">
+	<h3>File Upload & Publish</h3>
+	<p>Select a vector file:</p>
+	<input type="file" multiple (change)="onFile($event)" accept=".kml,.kmz,.zip,.gpx,.sqlite,.db,.mdb" />
+	<div *ngIf="uploading">Uploading... {{progress}}%</div>
+	<div *ngIf="message">{{message}}</div>
+
+	<hr />
+
+	<h3>Editing Workflow</h3>
+	<p>Enter Feature Service URL to edit </p>
+	<input type="text" [(ngModel)]="featureServiceUrl" placeholder="https://.../FeatureServer/0" />
+
+	<label>Feature ID to update (objectId)</label>
+	<input type="text" [(ngModel)]="editObjectId" placeholder="123" />
+
+	<label>Geometry (GeoJSON feature geometry)</label>
+	<textarea rows="6" [(ngModel)]="editGeometry" placeholder='{"type":"Point","coordinates":[80.7,7.9]}'></textarea>
+
+	<div style="display:flex;gap:8px;margin-top:8px;">
+		<button (click)="applyEdit()">Apply Edit</button>
+		<button (click)="refreshFeatureLayer()">Refresh / Load</button>
+	</div>
+
+	<div *ngIf="editMessage">{{editMessage}}</div>
+</section>

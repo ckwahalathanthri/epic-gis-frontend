@@ -552,7 +552,13 @@
 <header class="topbar">
   <div class="topbar-left">
     <div class="logo">Lanka GIS</div>
-    <nav class="map-type">3D Satellite • Satellite</nav>
+    <nav class="map-type"></nav>
+    <div class="top-actions">
+      <button title="Upload Data">⬆️ Upload Data</button>
+      <button title="Add Layer">📂 Add Layer</button>
+      <button title="Edit Features">✏️ Edit Features <span style="background:#34c759;color:#06201a;padding:2px 6px;border-radius:12px;margin-left:6px;">ON</span></button>
+      <button title="Analytics">📊 Analytics</button>
+    </div>
   </div>
   <div class="topbar-center">
     <input class="search" placeholder="Search address or coordinates..." />
@@ -572,46 +578,47 @@
 
 <div class="app-shell">
   <aside class="left-panel">
-    <h3>Map Type</h3>
-    <div class="map-type-pills">
-      <button class="pill" [class.active]="is3D" (click)="toggle3D()">3D Urban View</button>
+    <div class="panel-header">
+      <h3>Layers</h3>
+      <div class="panel-sub">Manage map layers and visibility</div>
     </div>
 
-    <h3 class="layers-title">Layers</h3>
-    <div class="layer-item">
-      <label>
-        <input type="checkbox" [checked]="forestEnabled" (change)="toggleForest($event.target.checked)" />
-        <span class="layer-dot forest"></span>
-        Forest Density (Heatmap)
-      </label>
-    </div>
-    <div class="layer-item">
-      <label>
-        <input type="checkbox" [checked]="seismicEnabled" (change)="toggleSeismic($event.target.checked)" />
-        <span class="layer-dot seismic"></span>
-        Seismic Activity
-      </label>
-    </div>
-    <div class="layer-item">
-      <label>
-        <input type="checkbox" [checked]="buildingsEnabled" (change)="toggleBuildings($event.target.checked)" />
-        <span class="layer-dot buildings"></span>
-        3D Building Footprints
-      </label>
+    <div class="section layer-list">
+      <div class="layer-item primary-pill">
+        <label>
+          <input type="checkbox" [checked]="is3D" (change)="toggle3D()" />
+          <span class="layer-name">3D Urban View</span>
+        </label>
+      </div>
+
+      <div class="layer-item">
+        <label>
+          <input type="checkbox" [checked]="forestEnabled" (change)="toggleForest($event.target.checked)" />
+          <span class="layer-dot forest"></span>
+          <span class="layer-name">Forest Density (Heatmap)</span>
+        </label>
+      </div>
+
+      <div class="layer-item">
+        <label>
+          <input type="checkbox" [checked]="seismicEnabled" (change)="toggleSeismic($event.target.checked)" />
+          <span class="layer-dot seismic"></span>
+          <span class="layer-name">Seismic Activity</span>
+        </label>
+      </div>
+
+      <div class="layer-item">
+        <label>
+          <input type="checkbox" [checked]="buildingsEnabled" (change)="toggleBuildings($event.target.checked)" />
+          <span class="layer-dot buildings"></span>
+          <span class="layer-name">3D Building Footprints</span>
+        </label>
+      </div>
     </div>
 
-    <button class="upload-btn" (click)="toggleUploadPanel()">Upload KML/GeoJSON</button>
-
-    <div class="small-divider"></div>
-
-    <h4>Upload Files</h4>
-    <app-upload></app-upload>
+   
   </aside>
 
-  <main class="map-area">
-    <app-map *ngIf="!useCesium"></app-map>
-    <app-cesium *ngIf="useCesium"></app-cesium>
-  </main>
 
   <div class="right-toolbar">
     <button class="tool" title="Add Feature Layer" (click)="addFeatureLayer()">＋</button>
@@ -619,6 +626,13 @@
     <button class="tool" title="Add Pin" (click)="addPin()">📍</button>
     <button class="tool" title="Add Basemap" (click)="addEnterpriseBasemap()">🧭</button>
     <button class="tool" title="Clear User Layers" (click)="clearUserLayers()">🗑️</button>
+  </div>
+
+  <div class="map-area" style="position:relative;height:calc(100vh - var(--topbar-height));display:flex;justify-content:center;align-items:center;padding:0 1rem;">
+    <div class="map-wrapper" style="width:100%;max-width:1200px;height:100%;">
+      <app-map *ngIf="!useCesium" style="width:100%;height:100%;display:block;"></app-map>
+      <app-cesium *ngIf="useCesium" style="width:100%;height:100%;display:block;"></app-cesium>
+    </div>
   </div>
 
   <div class="upload-panel" *ngIf="showUploadPanel">
@@ -633,7 +647,6 @@
     </div>
   </div>
 
-  <!-- legend removed -->
+  
 </div>
 
-<router-outlet />

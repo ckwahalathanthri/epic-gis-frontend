@@ -3,15 +3,28 @@ import { OnDestroy } from '@angular/core';
 import { LayerService } from './services/layer';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 import { MapComponent } from './gis/map/map';
 import { CesiumMapComponent } from './gis/cesium-map/cesium-map';
-import { UploadComponent } from './components/upload/upload';
+import { ToolsPanel } from "./components/tools-panel/tools-panel";
+import { AttributesTable } from './components/attributes-table/attributes-table';
+import { AppModal } from './components/app-modal/app-modal';
 declare const window: any;
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, MapComponent, UploadComponent, CesiumMapComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    HttpClientModule,
+    MapComponent,
+    CesiumMapComponent,
+    ToolsPanel,
+    AttributesTable,
+    AppModal
+  ],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
@@ -36,6 +49,9 @@ export class AppComponent implements OnDestroy {
       this.showToast('Layer added: ' + url);
     });
     this._subs.push(sub);
+    // subscribe to generic toasts from services
+    const sub2 = this.layerService.toast$.subscribe((m: string) => { this.showToast(m); });
+    this._subs.push(sub2);
   }
 
   toggle3D() {

@@ -1,3 +1,0 @@
-/* Global styles (external widget/theme CSS loaded from index.html) */
-@import url('assets/cesium/cesium/Build/Cesium/Widgets/widgets.css');
-@import url('assets/esri/themes/light/main.css');

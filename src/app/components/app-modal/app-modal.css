@@ -1,0 +1,11 @@
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px) }
+.modal-dialog { background:linear-gradient(180deg, #0f2e48, #0a2235); border-radius:12px; padding:20px; min-width:400px; box-shadow:0 20px 60px rgba(0,0,0,0.5); color:#eaf6ff }
+.modal-header h3 { margin:0 0 12px 0; font-size:1.1rem; color:#fff }
+.modal-body { margin-bottom:20px }
+.modal-body p { margin:0 0 12px 0; color:#cfe9ff }
+.modal-body input { width:100%; padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#fff; font-size:1rem }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end }
+.modal-actions button { padding:8px 16px; border-radius:6px; border:none; cursor:pointer; font-weight:600 }
+.modal-actions button.primary { background:#2b9cff; color:#fff }
+.modal-actions button:not(.primary) { background:rgba(255,255,255,0.06); color:#dff3ff }
+.modal-actions button:hover { opacity:0.85 }

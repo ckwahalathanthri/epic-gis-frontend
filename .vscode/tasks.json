@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "npm: start",
       "type": "npm",
       "script": "start",
       "isBackground": true,
@@ -21,6 +22,7 @@
       }
     },
     {
+      "label": "npm: test",
       "type": "npm",
       "script": "test",
       "isBackground": true,
@@ -36,7 +38,7 @@
             "regexp": "bundle generation (complete|failed)"
           }
         }
-      
+      }
     },
     {
       "label": "Run with CMD",

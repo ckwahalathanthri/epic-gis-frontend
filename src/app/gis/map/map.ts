@@ -2,11 +2,13 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { LayerService } from '../../services/layer';
+import { ModalService } from '../../services/modal.service';
 import esriConfig from '@arcgis/core/config';
 import Map from '@arcgis/core/Map';
 import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
+import GeoJSONLayer from '@arcgis/core/layers/GeoJSONLayer';
 import KMLLayer from '@arcgis/core/layers/KMLLayer';
 import TileLayer from '@arcgis/core/layers/TileLayer';
 import MapImageLayer from '@arcgis/core/layers/MapImageLayer';
@@ -27,7 +29,7 @@ declare function prompt(message?: string): string | null;
   standalone: true,
   imports: [CommonModule, HttpClientModule],
   template: `
-    <div style="display:flex;flex-direction:column;height:100vh;">
+    <div style="display:flex;flex-direction:column;height:100%;">
       <div style="padding:8px;display:flex;gap:8px;align-items:center;">
         <button (click)="addFeatureLayer()">Add Feature Layer</button>
         <button (click)="addKMLLayer()">Add KML Layer</button>
@@ -62,7 +64,7 @@ export class MapComponent implements OnInit, OnDestroy {
   private seismicLayer: any;
   private buildingLayer: any;
 
-  constructor(private http: HttpClient, private layerService: LayerService) {}
+  constructor(private http: HttpClient, private layerService: LayerService, private modalService: ModalService) {}
 
   ngOnInit(): void {
     esriConfig.assetsPath = '/assets';
@@ -100,6 +102,48 @@ export class MapComponent implements OnInit, OnDestroy {
         } catch (err) { /* ignore */ }
       });
     } catch (e) { console.warn('LayerService subscribe failed', e); }
+
+    // load existing layers from backend
+    try {
+      this.layerService.listLayers().subscribe({
+        next: (layers: any) => {
+          if (!layers) return;
+          // layers may be array or object with items
+          const items = Array.isArray(layers) ? layers : (layers.items ?? layers);
+          (items || []).forEach((l: any) => {
+            // if descriptor has direct url (FeatureServer/KML), try adding as FeatureLayer
+            if (l.url && typeof l.url === 'string') {
+              try { this.addFeatureLayerFromUrl(l.url); }
+              catch (e) { console.warn('addFeatureLayerFromUrl failed, trying KML/GeoJSON', e); }
+            } else if (l.id) {
+              // fetch geojson for this layer id
+              this.layerService.getGeoJson(l.id).subscribe({
+                next: (g: any) => {
+                    try {
+                    // If backend returned a URL, use it
+                    if (g && typeof g === 'object' && g.type === 'FeatureCollection') {
+                      const blob = new (window as any).Blob([JSON.stringify(g)], { type: 'application/json' });
+                      const url = (window as any).URL.createObjectURL(blob);
+                      const geo = new GeoJSONLayer({ url, title: l.name ?? ('layer-' + l.id) });
+                      this.map.add(geo);
+                      this.userLayers.push(geo);
+                    } else if (g && g.url) {
+                      const geo = new GeoJSONLayer({ url: g.url, title: l.name ?? ('layer-' + l.id) });
+                      this.map.add(geo);
+                      this.userLayers.push(geo);
+                    }
+                  } catch (err) { console.error('Failed to add geojson layer', err); }
+                },
+                error: (err: any) => { console.warn('getGeoJson failed for', l.id, err); }
+              });
+            }
+          });
+        },
+        error: (err: any) => { console.warn('listLayers failed', err); }
+      });
+    } catch (e) {
+      console.warn('Failed to load layers from backend', e);
+    }
   }
 
   ngOnDestroy(): void {
@@ -119,8 +163,8 @@ export class MapComponent implements OnInit, OnDestroy {
       });
   }
 
-  addEnterpriseBasemap() {
-    const url = prompt('Enter ArcGIS Enterprise Tile/MapServer URL (e.g. https://.../MapServer or /TileServer):');
+  async addEnterpriseBasemap() {
+    const url = await this.modalService.prompt('Enter ArcGIS Enterprise Tile/MapServer URL (e.g. https://.../MapServer or /TileServer):');
     if (!url) return;
 
     // try creating a TileLayer first, fallback to MapImageLayer
@@ -146,7 +190,7 @@ export class MapComponent implements OnInit, OnDestroy {
   /**
    * Switch between 2D (MapView) and 3D (SceneView).
    */
-  setViewMode(mode: '2d' | '3d') {
+  async setViewMode(mode: '2d' | '3d') {
     // if already in requested mode do nothing
     const is3d = mode === '3d';
     if (is3d && this.sceneView) return;
@@ -182,9 +226,9 @@ export class MapComponent implements OnInit, OnDestroy {
         } else {
           // prompt the user whether they'd like to load a 3D building layer
           try {
-            const load = window.confirm('Enter 3D mode — automatically load a 3D building SceneLayer? Click OK to provide a URL, Cancel to skip.');
+            const load = await this.modalService.confirm('Enter 3D mode — automatically load a 3D building SceneLayer?');
             if (load) {
-              const url = prompt('SceneLayer URL (SceneServer endpoint):');
+              const url = await this.modalService.prompt('SceneLayer URL (SceneServer endpoint):');
               if (url) {
                 this.sceneLayerUrl = url;
                 this.addSceneLayer(url);
@@ -227,10 +271,10 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleForestDensity(enabled: boolean) {
+  async toggleForestDensity(enabled: boolean) {
     if (enabled) {
       if (!this.forestLayer) {
-        const url = prompt('Enter Feature/Tile layer URL for Forest Density (leave blank to add empty placeholder):');
+        const url = await this.modalService.prompt('Enter Feature/Tile layer URL for Forest Density (leave blank to add empty placeholder):');;
         if (url) {
           try {
             this.forestLayer = new FeatureLayer({ url, outFields: ['*'] });
@@ -250,10 +294,10 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleSeismicActivity(enabled: boolean) {
+  async toggleSeismicActivity(enabled: boolean) {
     if (enabled) {
       if (!this.seismicLayer) {
-        const url = prompt('Enter Feature/Tile layer URL for Seismic Activity (leave blank to add empty placeholder):');
+        const url = await this.modalService.prompt('Enter Feature/Tile layer URL for Seismic Activity (leave blank to add empty placeholder):');;
         if (url) {
           try { this.seismicLayer = new FeatureLayer({ url, outFields: ['*'] }); }
           catch (e) { this.seismicLayer = new TileLayer({ url }); }
@@ -268,10 +312,10 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleBuildingFootprints(enabled: boolean) {
+  async toggleBuildingFootprints(enabled: boolean) {
     if (enabled) {
       if (!this.buildingLayer) {
-        const url = prompt('Enter Feature/Scene layer URL for Building Footprints (SceneServer/FeatureServer) (leave blank to add placeholder):');
+        const url = await this.modalService.prompt('Enter Feature/Scene layer URL for Building Footprints (SceneServer/FeatureServer) (leave blank to add placeholder):');;
         if (url) {
           // if in 3d prefer SceneLayer
           if (this.sceneView) {
@@ -292,8 +336,8 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
-  addFeatureLayer() {
-    const url = prompt('Enter Feature Layer URL:');
+  async addFeatureLayer() {
+    const url = await this.modalService.prompt('Enter Feature Layer URL:');
     if (url) this.addFeatureLayerFromUrl(url);
   }
 
@@ -301,10 +345,48 @@ export class MapComponent implements OnInit, OnDestroy {
     const layer = new FeatureLayer({ url, outFields: ['*'] });
     this.map.add(layer);
     this.userLayers.push(layer);
+
+    // query features and set current features for attributes table
+    try {
+      layer.queryFeatures({ where: '1=1', outFields: ['*'], returnGeometry: true })
+        .then((results: any) => {
+          const feats = (results?.features ?? []).map((f: any) => ({
+            attributes: f.attributes,
+            geometry: f.geometry,
+            layerUrl: layer.url
+          }));
+          this.layerService.setCurrentFeatures(feats);
+        })
+        .catch((err: any) => console.warn('queryFeatures failed', err));
+    } catch (e) { console.warn('queryFeatures error', e); }
+
+    // add popup actions for edit/delete
+    try {
+      this.view.popup.actions.removeAll?.();
+      this.view.popup.actions.add({ id: 'edit', title: 'Edit', className: 'esri-icon-edit' });
+      this.view.popup.actions.add({ id: 'delete', title: 'Delete', className: 'esri-icon-trash' });
+
+      this.view.popup.on('trigger-action', async (evt: any) => {
+        const id = evt.action.id;
+        const selected = this.view.popup.selectedFeature;
+        if (!selected) return;
+        const attrs = selected.attributes;
+        const objectId = attrs.objectId ?? attrs.OBJECTID ?? attrs.FID ?? attrs.id;
+        if (id === 'edit') {
+          const newName = await this.modalService.prompt('Enter new name', attrs?.name ?? '');
+          if (newName == null) return;
+          const updates = [{ attributes: { objectId, name: newName } }];
+          this.layerService.applyEditsProxy(layer.url!, { updates }).subscribe({ next: () => { this.layerService.emitToast('Edited feature'); }, error: (err: any) => { console.error(err); this.layerService.emitToast('Edit failed'); } });
+        } else if (id === 'delete') {
+          if (!(await this.modalService.confirm('Delete this feature?'))) return;
+          this.layerService.applyEditsProxy(layer.url!, { deletes: [objectId] }).subscribe({ next: () => { this.layerService.emitToast('Deleted feature'); }, error: (err: any) => { console.error(err); this.layerService.emitToast('Delete failed'); } });
+        }
+      });
+    } catch (e) { console.warn('popup action setup failed', e); }
   }
 
-  addKMLLayer() {
-    const url = prompt('Enter KML URL:');
+  async addKMLLayer() {
+    const url = await this.modalService.prompt('Enter KML URL:');
     if (!url) return;
     const kmlLayer = new KMLLayer({ url });
     this.map.add(kmlLayer);
