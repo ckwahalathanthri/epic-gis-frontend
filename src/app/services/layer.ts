@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Subject, BehaviorSubject, of } from 'rxjs';
 import { environment } from '../../environments/environments';
 
 export interface UploadedLayer {
@@ -16,6 +16,10 @@ export interface UploadedLayer {
 export class LayerService {
   // We use the environment variable so we can change it easily later
   private baseUrl = `${environment.apiUrl}/layers`;
+
+  public layerAdded$ = new Subject<string>();
+  public toast$ = new Subject<string>();
+  public currentFeatures$ = new BehaviorSubject<any[]>([]);
 
   constructor(private http: HttpClient) {}
 
@@ -37,4 +41,66 @@ export class LayerService {
     // Matches PUT /api/layers/{layerId}/features
     return this.http.put<any>(`${this.baseUrl}/${layerId}/features`, featureDto);
   }
+
+  // Emits a toast message
+  emitToast(msg: string) {
+    this.toast$.next(msg);
+  }
+
+  // Notifies subscribers that a layer was added
+  notifyLayerAdded(url: string) {
+    this.layerAdded$.next(url);
+  }
+
+  // Updates the feature table
+  setCurrentFeatures(features: any[]) {
+    this.currentFeatures$.next(features);
+  }
+
+  // Adapter for tools-panel (handles FileList)
+  uploadFiles(files: FileList): Observable<any> {
+    if (!files || files.length === 0) return of(null);
+    const file = files[0];
+    return this.uploadLayer(file, file.name);
+  }
+
+  // Adapter for map.ts (list not implemented in backend yet)
+  listLayers(): Observable<any[]> {
+    return of([]); // Return empty list for now
+  }
+
+  // Alias for getLayerGeoJson
+  getGeoJson(id: string): Observable<any> {
+    return this.getLayerGeoJson(id);
+  }
+
+  // Adapter for ArcGIS-style edits in map.ts
+  applyEditsProxy(url: string, edits: any): Observable<any> {
+    console.log('Applying edits via proxy adapter:', edits);
+
+    const layerId = url.split('/').slice(-2)[0] || 'unknown-layer';
+    
+    // Check if it's an update
+    if (edits.updates && edits.updates.length > 0) {
+        const update = edits.updates[0];
+        const attributes = update.attributes;
+        const id = attributes.objectId || attributes.id || attributes.OBJECTID;
+        
+        // Map to our FeatureUpdateDTO
+        const dto = {
+            id: id,
+            properties: attributes
+            // geometry: ... (ArcGIS editor might send separate geometry)
+        };
+        return this.updateFeature(layerId, dto);
+    }
+    
+    return of({ success: false, message: 'Operation not supported yet' });
+  }
+
+  // Stub for query logic
+  queryFeatureServiceGeoJson(url: string): Observable<any> {
+    return of({ type: 'FeatureCollection', features: [] });
+  }
+
 }

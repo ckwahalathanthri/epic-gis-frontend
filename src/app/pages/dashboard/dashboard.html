@@ -1,1 +1,30 @@
-<p>dashboard works!</p>
+<div class="dashboard-layout">
+    <!-- Sidebar / Toolbar -->
+    <div class="sidebar">
+        <h3>GIS Tools</h3>
+        
+        <div class="tool-section">
+            <h4>1. Upload Layer</h4>
+            <input type="file" #fileInput (change)="onUpload($any($event.target).files[0])" accept=".zip,.kml,.kmz,.json,.geojson">
+        </div>
+
+        <div class="tool-section">
+            <h4>2. Layers</h4>
+            <div *ngIf="layers.length === 0" class="empty-state">No layers loaded</div>
+            <ul class="layer-list">
+                <li *ngFor="let layer of layers">
+                    <input type="checkbox" [checked]="layer.visible" (change)="toggleLayer(layer)">
+                    {{ layer.name }}
+                    <button class="btn-sm" (click)="flyTo(layer)">Fly</button>
+                    <button class="btn-sm" (click)="removeLayer(layer)">X</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Map Area -->
+    <div class="map-wrapper">
+        <app-cesium-map></app-cesium-map> <!-- Matches selector: 'app-cesium-map' in cesium-map.ts -->
+    </div>
+</div>
+
