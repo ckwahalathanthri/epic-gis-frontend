@@ -158,16 +158,43 @@ export class MapComponent implements OnInit, OnDestroy {
     this.layerService.uploadLayer(file, file.name).subscribe({
         next: (res: any) => {
             console.log('Upload successful:', res);
-            // Optionally notify user or refresh layer list
+            
             if (res && res.id) {
-                 // Trigger a refresh logic or add the layer to the map
-                 // For now, we will verify the upload works (fixing the 404)
-                 console.info('Layer ID ' + res.id + ' created.');
+                 console.info('Layer ID ' + res.id + ' created. Fetching GeoJSON...');
+                 
+                 // Fetch the GeoJSON and display it immediately
+                 this.layerService.getLayerGeoJson(res.id).subscribe({
+                     next: (geoJson: any) => {
+                         console.log('GeoJSON fetched:', geoJson);
+                         
+                         // Create a blob URL for the GeoJSONLayer
+                         const blob = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
+                         const url = URL.createObjectURL(blob);
+                         
+                         const layer = new GeoJSONLayer({
+                             url: url,
+                             title: res.layerName || ('layer-' + res.id),
+                             // Optional: simple renderer if needed, or rely on default
+                         });
+                         
+                         this.map.add(layer);
+                         console.info('Layer added to map.');
+                         
+                         // Try to zoom to the layer extent once loaded
+                         layer.when(() => {
+                            if (layer.fullExtent) {
+                                this.view.goTo(layer.fullExtent).catch((e: any) => console.warn(e));
+                            }
+                         });
+                     },
+                     error: (err: any) => console.error('Failed to fetch layer GeoJSON', err)
+                 });
             }
         },
         error: (err: any) => console.error('Upload failed', err)
     });
   }
+
 
   async addEnterpriseBasemap() {
     const url = await this.modalService.prompt('Enter ArcGIS Enterprise Tile/MapServer URL (e.g. https://.../MapServer or /TileServer):');
