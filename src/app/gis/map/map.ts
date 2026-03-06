@@ -166,6 +166,38 @@ export class MapComponent implements OnInit, OnDestroy {
                  this.layerService.getLayerGeoJson(res.id).subscribe({
                      next: (geoJson: any) => {
                          console.log('GeoJSON fetched:', geoJson);
+
+                         if (!geoJson.features || geoJson.features.length === 0) {
+                             console.warn('GeoJSON has no features.');
+                             return;
+                         }
+
+                         // Determine Geometry Type to pick a visible style
+                         const firstGeom = geoJson.features[0].geometry.type;
+                         let renderer: any;
+
+                         if (firstGeom === 'Point' || firstGeom === 'MultiPoint') {
+                             // Bright Orange Dots for Points
+                             renderer = {
+                                 type: "simple",
+                                 symbol: {
+                                     type: "simple-marker",
+                                     color: [255, 100, 0, 0.9], // Bright Orange
+                                     size: 8,
+                                     outline: { color: [255, 255, 255], width: 1 }
+                                 }
+                             };
+                         } else {
+                             // Pink Polygons for Shapes
+                             renderer = {
+                                 type: "simple",
+                                 symbol: {
+                                     type: "simple-fill",
+                                     color: [255, 0, 255, 0.5], // Pink, transparent
+                                     outline: { color: [255, 255, 255], width: 1 }
+                                 }
+                              };
+                            }
                          
                          // Create a blob URL for the GeoJSONLayer
                          const blob = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
