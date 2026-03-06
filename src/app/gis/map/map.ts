@@ -168,46 +168,50 @@ export class MapComponent implements OnInit, OnDestroy {
 
                          // Determine Geometry Type to pick a visible style
                          const firstGeom = geoJson.features[0].geometry.type;
-                         let renderer: any;
+                         let renderer2D: any;
+                         let renderer3D: any;
 
                          if (firstGeom === 'Point' || firstGeom === 'MultiPoint') {
-                             // Bright Orange Dots for Points
-                             renderer = {
+                             // Bright Orange Dots for Points (Looks the same in 2D and 3D)
+                             renderer2D = renderer3D = {
                                  type: "simple",
                                  symbol: {
                                      type: "simple-marker",
-                                     color: [255, 100, 0, 0.9], // Bright Orange
+                                     color: [255, 100, 0, 0.9],
                                      size: 8,
                                      outline: { color: [255, 255, 255], width: 1 }
                                  }
                              };
                          } else {
-                             // Pink Polygons for Shapes
-                             renderer = {
+                             // 2D Pink Polygons
+                             renderer2D = {
+                                 type: "simple",
+                                 symbol: {
+                                     type: "simple-fill",
+                                     color: [255, 0, 255, 0.5], // Pink
+                                     outline: { color: [255, 255, 255], width: 1 }
+                                 }
+                             };
+
+                             // 3D Extruded Polygons
+                             renderer3D = {
                                  type: "simple",
                                  symbol: {
                                      type: "polygon-3d",
-                                     symbolLayers: [
-                                       {
+                                     symbolLayers: [{
                                          type: "extrude",
-                                         material: { color: [255, 0, 255, 0.7] }, // Pink, slightly transparent
-                                         edges: {
-                                           type: "solid",
-                                           color: [50, 50, 50, 0.5],
-                                           size: 1
-                                         }
-                                       }
-                                     ]
+                                         material: { color: [255, 0, 255, 0.8] },
+                                         edges: { type: "solid", color: [50, 50, 50, 0.5], size: 1 }
+                                     }]
                                  },
-                                 visualVariables: [
-                                   {
+                                 visualVariables: [{
                                      type: "size",
-                                     // Looks for common height fields; defaults to 15 meters if none exist
-                                     valueExpression: "$feature.height || $feature.HEIGHT || $feature.levels * 3 || $feature.LEVELS * 3 || 15",
+                                     // Safe Arcade Script: looks for height or levels, defaults to 15m
+                                     valueExpression: "var h = 15; if (HasKey($feature, 'height') && !IsEmpty($feature.height)) { h = $feature.height; } else if (HasKey($feature, 'levels') && !IsEmpty($feature.levels)) { h = $feature.levels * 3; } return Number(h);",
                                      valueUnit: "meters"
-                                   }
-                                 ]
+                                 }]
                               };
+                                 
                             }
                          
                          // Create a blob URL for the GeoJSONLayer
@@ -217,10 +221,16 @@ export class MapComponent implements OnInit, OnDestroy {
                          const layer = new GeoJSONLayer({
                              url: url,
                              title: res.layerName || ('layer-' + res.id),
-                             // Optional: simple renderer if needed, or rely on default
+                             // Apply correct renderer based on the STARTING view
+                             renderer: this.is3DMode ? renderer3D : renderer2D
                          });
                          
+                         // Store both renderers inside the layer object for later swapping
+                         (layer as any).customRenderer2D = renderer2D;
+                         (layer as any).customRenderer3D = renderer3D;
+                         
                          this.map.add(layer);
+                         this.userLayers.push(layer); // <--- Make sure this is added to track it!
                          console.info('Layer added to map.');
                          
                          // Try to zoom to the layer extent once loaded
@@ -310,8 +320,14 @@ export class MapComponent implements OnInit, OnDestroy {
       this.view = this.mapView;
     }
 
+    // SWAP RENDERERS FOR ALL UPLOADED LAYERS BASED ON 2D/3D MODE
+    this.userLayers.forEach((layer: any) => {
+        if (layer.customRenderer2D && layer.customRenderer3D) {
+            layer.renderer = is3d ? layer.customRenderer3D : layer.customRenderer2D;
+        }
+    });
 
-        // Refresh UI Widgets safely
+    // Refresh UI Widgets safely
     try {
       this.view.ui.empty(); // clear existing to avoid duplicates
       const editor = new Editor({ view: this.view });
