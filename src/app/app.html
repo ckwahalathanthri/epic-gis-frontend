@@ -554,6 +554,8 @@
     <div class="logo">Lanka GIS</div>
     <nav class="map-type"></nav>
     <div class="top-actions">
+      <button title="View Map" (click)="goToMap()" *ngIf="!showMap">🗺️ View Map</button>
+      <button title="View Files" (click)="goToFiles()" *ngIf="showMap">🗂️ View Files</button>
       <button title="Upload Data">⬆️ Upload Data</button>
       <button title="Add Layer">📂 Add Layer</button>
       <button title="Edit Features">✏️ Edit Features <span style="background:#34c759;color:#06201a;padding:2px 6px;border-radius:12px;margin-left:6px;">ON</span></button>
@@ -576,11 +578,21 @@
     <div class="app-toast-inner">{{ toastMessage }}</div>
   </div>
 
-<div class="app-shell">
+<div class="app-shell" *ngIf="showMap">
   <aside class="left-panel">
     <div class="panel-header">
       <h3>Layers</h3>
       <div class="panel-sub">Manage map layers and visibility</div>
+    </div>
+
+    <div class="upload-panel-inner">
+      <div class="upload-title">Upload Files</div>
+      <div class="dropzone">Drop files here or click or browse</div>
+      <div class="upload-actions">
+        <button class="ghost">.JSML</button>
+        <button class="ghost">.KML</button>
+        <button class="ghost">.GeoJSON</button>
+      </div>
     </div>
 
     <div class="section layer-list">
@@ -635,18 +647,10 @@
     </div>
   </div>
 
-  <div class="upload-panel" *ngIf="showUploadPanel">
-    <div class="upload-panel-inner">
-      <div class="upload-title">Upload Files</div>
-      <div class="dropzone">Drop files here or click or browse</div>
-      <div class="upload-actions">
-        <button class="ghost">.JSML</button>
-        <button class="ghost">.KML</button>
-        <button class="ghost">.GeoJSON</button>
-      </div>
-    </div>
-  </div>
 
-  
+</div>
+
+<div class="page-container" *ngIf="!showMap" style="padding-top: var(--topbar-height); height: 100vh; overflow-y: auto;">
+  <router-outlet></router-outlet>
 </div>
 

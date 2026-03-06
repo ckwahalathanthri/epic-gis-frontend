@@ -1,7 +1,7 @@
 ﻿import { Component, signal, ViewChild } from '@angular/core';
 import { OnDestroy } from '@angular/core';
 import { LayerService } from './services/layer';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
@@ -23,7 +23,8 @@ declare const window: any;
     CesiumMapComponent,
     ToolsPanel,
     AttributesTable,
-    AppModal
+    AppModal,
+    RouterOutlet
   ],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
@@ -43,7 +44,7 @@ export class AppComponent implements OnDestroy {
   private _toastTimer: any = null;
   private _subs: any[] = [];
 
-  constructor(private layerService: LayerService) {
+  constructor(private layerService: LayerService, private router: Router) {
     // subscribe to layer added notifications to show toast
     const sub = this.layerService.layerAdded$.subscribe((url: string) => {
       this.showToast('Layer added: ' + url);
@@ -54,6 +55,10 @@ export class AppComponent implements OnDestroy {
     this._subs.push(sub2);
   }
 
+  toggleUploadPanel() {
+    this.showUploadPanel = !this.showUploadPanel;
+  }
+
   toggle3D() {
     this.is3D = !this.is3D;
     this.mapComp?.setViewMode(this.is3D ? '3d' : '2d');
@@ -61,10 +66,6 @@ export class AppComponent implements OnDestroy {
 
   toggleCesium() {
     this.useCesium = !this.useCesium;
-  }
-
-  toggleUploadPanel() {
-    this.showUploadPanel = !this.showUploadPanel;
   }
 
   openSettings() {
@@ -113,5 +114,18 @@ export class AppComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this._subs.forEach(s => s.unsubscribe && s.unsubscribe());
+  }
+
+  get showMap() {
+    return this.router.url === '/' || this.router.url.startsWith('/?');
+  }
+
+  goToFiles() {
+    this.router.navigate(['/files']);
+  }
+
+  // --- Navigate back to Map ---
+  goToMap() {
+    this.router.navigate(['/']);
   }
 }

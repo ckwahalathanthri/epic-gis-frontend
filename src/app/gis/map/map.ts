@@ -282,7 +282,17 @@ export class MapComponent implements OnInit, OnDestroy {
     if (is3d && this.view?.type === '3d') return;
     if (!is3d && this.view?.type === '2d') return;
 
+    // 1. CAPTURE CURRENT VIEWPORT BEFORE DETACHING
+    let currentViewpoint: any = null;
     if (this.view) {
+      if (this.view.viewpoint) {
+        currentViewpoint = this.view.viewpoint.clone();
+        
+        // If transitioning from 2D to 3D, automatically add a slight tilt so buildings stand out
+        if (is3d && currentViewpoint.camera) {
+            currentViewpoint.camera.tilt = 60; 
+        }
+      }
       this.view.container = null; 
     }
 
@@ -292,8 +302,8 @@ export class MapComponent implements OnInit, OnDestroy {
         this.sceneView = new SceneView({
           container: 'mapViewDiv',
           map: this.map,
-          center: [80.7, 7.8],
-          zoom: 16,
+          // center: [80.7, 7.8],
+          // zoom: 16,
           viewingMode: 'local',
           camera: {
             position: { x: 80.7, y: 7.8, z: 1200 },
@@ -318,6 +328,10 @@ export class MapComponent implements OnInit, OnDestroy {
         this.mapView.container = document.getElementById('mapViewDiv') as any;
       }
       this.view = this.mapView;
+    }
+
+    if (currentViewpoint) {
+      this.view.viewpoint = currentViewpoint;
     }
 
     // SWAP RENDERERS FOR ALL UPLOADED LAYERS BASED ON 2D/3D MODE

@@ -65,8 +65,8 @@ export class LayerService {
   }
 
   // Adapter for map.ts (list not implemented in backend yet)
-  listLayers(): Observable<any[]> {
-    return of([]); // Return empty list for now
+  listLayers(): Observable<UploadedLayer[]> {
+    return this.http.get<UploadedLayer[]>(this.baseUrl); 
   }
 
   // Alias for getLayerGeoJson

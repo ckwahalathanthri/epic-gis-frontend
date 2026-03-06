@@ -1,0 +1,61 @@
+<div class="files-page">
+  <div class="header">
+    <div class="header-text">
+      <h1>🗂️ Data Repository</h1>
+      <p>Manage and view your uploaded spatial datasets.</p>
+    </div>
+    <div class="header-stats" *ngIf="!isLoading && layers.length > 0">
+      <div class="stat-badge">{{ layers.length }} Dataset{{ layers.length !== 1 ? 's' : '' }}</div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Loading datasets...</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-state" *ngIf="!isLoading && errorMessage">
+    <div class="error-icon">⚠️</div>
+    <p>{{ errorMessage }}</p>
+    <button (click)="ngOnInit()">Retry</button>
+  </div>
+
+  <!-- Empty -->
+  <div class="empty-state" *ngIf="!isLoading && !errorMessage && layers.length === 0">
+    <div class="empty-icon">🌍</div>
+    <h3>No datasets uploaded yet</h3>
+    <p>Upload a Shapefile (.zip) from the map view to get started.</p>
+  </div>
+
+  <!-- Cards Grid - NOTE: all 3 conditions must be true -->
+  <div class="grid" *ngIf="!isLoading && !errorMessage && layers.length > 0">
+    <div class="card" *ngFor="let layer of layers">
+      <div class="card-top">
+        <div class="format-badge"
+             [style.background]="getFormatColor(layer.originalFormat) + '22'"
+             [style.color]="getFormatColor(layer.originalFormat)"
+             [style.border]="'1px solid ' + getFormatColor(layer.originalFormat) + '55'">
+          {{ getFormatIcon(layer.originalFormat) }} {{ layer.originalFormat }}
+        </div>
+        <div class="visibility-dot"
+             [class.visible]="layer.visible"
+             [title]="layer.visible ? 'Visible' : 'Hidden'">
+        </div>
+      </div>
+
+      <div class="card-content">
+        <h3 title="{{ layer.layerName }}">{{ layer.layerName }}</h3>
+        <p class="layer-id">ID: {{ layer.id | slice:0:12 }}...</p>
+      </div>
+
+      <div class="card-actions">
+        <button class="view-btn" (click)="viewOnMap(layer.id)">
+          🗺️ View on Map
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
