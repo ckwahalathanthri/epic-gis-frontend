@@ -1,32 +1,43 @@
-﻿:host { display: block; height: 100%; width: 100%; }
-.map-view { height: calc(100vh - var(--topbar-h)); width: 100%; background: #082038; }
+﻿:host { display: block; height: 100%; width: 100%; position: relative; }
+.map-view { height: calc(100vh - var(--topbar-h, 60px)); width: 100%; background: #082038; }
 
-/* toolbar floating on the right like the screenshot */
+/* toolbar floating on the right */
 .toolbar {
   position: absolute;
-  z-index: 999;
-  background: linear-gradient(180deg, rgba(3,8,14,0.6), rgba(6,10,18,0.45));
-  color: var(--muted);
-  padding: 8px;
-  border-radius: 10px;
-  top: 96px;
-  right: 14px;
+  top: 20px;
+  right: 60px; /* moved slightly inward so it doesn't overlap the far right buttons */
   display: flex;
   flex-direction: column;
   gap: 10px;
-  align-items: center;
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+  z-index: 10;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 10px;
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
 }
-.toolbar button {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+
+.toolbar button, .toolbar label {
+  width: auto;
+  min-width: 100px;
+  padding: 8px 12px;
+  border-radius: 8px;
   border: none;
-  background: rgba(255,255,255,0.03);
-  color: var(--muted);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
+
+.toolbar button:hover, .toolbar label:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.toolbar label input {
+  display: none;
+}
+

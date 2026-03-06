@@ -28,25 +28,10 @@ declare function prompt(message?: string): string | null;
   selector: 'app-map',
   standalone: true,
   imports: [CommonModule, HttpClientModule],
-  template: `
-    <div style="display:flex;flex-direction:column;height:100%;">
-      <div style="padding:8px;display:flex;gap:8px;align-items:center;">
-        <button (click)="addFeatureLayer()">Add Feature Layer</button>
-        <button (click)="addKMLLayer()">Add KML Layer</button>
-        <button (click)="addEnterpriseBasemap()">Add ArcGIS Enterprise Basemap</button>
-        <button (click)="showAttributes()">Show Attributes</button>
-        <input type="file" (change)="uploadFile($event)" />
-      </div>
-      <div id="mapViewDiv" style="flex:1;"></div>
-    </div>
-  `,
-  styles: [`
-    :host { display:block; height:100%; width:100%; }
-    #mapViewDiv { height:100%; width:100%; }
-    /* You can add global styles to this file, and also import other style files */
-   
-  `]
+  templateUrl: './map.html',
+  styleUrls: ['./map.css']   
 })
+
 export class MapComponent implements OnInit, OnDestroy {
   private map!: Map;
   // view may be MapView or SceneView
@@ -63,6 +48,7 @@ export class MapComponent implements OnInit, OnDestroy {
   private forestLayer: any;
   private seismicLayer: any;
   private buildingLayer: any;
+  is3DMode: boolean = false; 
 
   constructor(private http: HttpClient, private layerService: LayerService, private modalService: ModalService) {}
 
@@ -80,6 +66,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
     const layerList = new LayerList({ view: this.view });
     this.view.ui.add(layerList, 'top-left');
+
 
     // subscribe to uploaded layers and auto-add them to the map
     try {
@@ -146,6 +133,11 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
+  toggle3D() {
+    this.is3DMode = !this.is3DMode;
+    this.setViewMode(this.is3DMode ? '3d' : '2d');
+  }
+
   ngOnDestroy(): void {
     this.view?.destroy();
   }
@@ -192,10 +184,27 @@ export class MapComponent implements OnInit, OnDestroy {
                              renderer = {
                                  type: "simple",
                                  symbol: {
-                                     type: "simple-fill",
-                                     color: [255, 0, 255, 0.5], // Pink, transparent
-                                     outline: { color: [255, 255, 255], width: 1 }
-                                 }
+                                     type: "polygon-3d",
+                                     symbolLayers: [
+                                       {
+                                         type: "extrude",
+                                         material: { color: [255, 0, 255, 0.7] }, // Pink, slightly transparent
+                                         edges: {
+                                           type: "solid",
+                                           color: [50, 50, 50, 0.5],
+                                           size: 1
+                                         }
+                                       }
+                                     ]
+                                 },
+                                 visualVariables: [
+                                   {
+                                     type: "size",
+                                     // Looks for common height fields; defaults to 15 meters if none exist
+                                     valueExpression: "$feature.height || $feature.HEIGHT || $feature.levels * 3 || $feature.LEVELS * 3 || 15",
+                                     valueUnit: "meters"
+                                   }
+                                 ]
                               };
                             }
                          
