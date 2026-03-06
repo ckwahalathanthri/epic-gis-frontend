@@ -36,6 +36,7 @@ export class MapComponent implements OnInit, OnDestroy {
   private map!: Map;
   // view may be MapView or SceneView
   private view: any;
+  private mapView?: MapView;
   private sceneView?: SceneView;
   private sceneLayer?: SceneLayer;
   private userLayers: any[] = [];
@@ -44,7 +45,8 @@ export class MapComponent implements OnInit, OnDestroy {
   // Default public SceneLayer URL (example). Replace with your SceneServer URL to auto-load 3D buildings.
   // Example public SceneLayer (may be rate-limited or changed by provider):
   // https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer
-  private sceneLayerUrl: string | null = 'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer';
+  // private sceneLayerUrl: string | null = 'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer';
+  private sceneLayerUrl: string | null = null;
   private forestLayer: any;
   private seismicLayer: any;
   private buildingLayer: any;
@@ -267,71 +269,71 @@ export class MapComponent implements OnInit, OnDestroy {
   async setViewMode(mode: '2d' | '3d') {
     // if already in requested mode do nothing
     const is3d = mode === '3d';
-    if (is3d && this.sceneView) return;
-    if (!is3d && this.view && this.view.type === '3d') {
-      // switch to 2d
-    }
+    if (is3d && this.view?.type === '3d') return;
+    if (!is3d && this.view?.type === '2d') return;
 
-    // destroy existing view
-    try { this.view?.destroy(); } catch (e) { /* ignore */ }
+    if (this.view) {
+      this.view.container = null; 
+    }
 
     if (is3d) {
-      // create SceneView
-      this.sceneView = new SceneView({
-        container: 'mapViewDiv',
-        map: this.map,
-        center: [80.7, 7.8],
-        zoom: 16,
-        viewingMode: 'local',
-        camera: {
-          position: {
-            x: 80.7,
-            y: 7.8,
-            z: 1200
-          },
-          tilt: 60
-        }
-      });
-      this.view = this.sceneView;
-      // attempt to add a 3D building SceneLayer automatically if configured
-      if (!this.sceneLayer) {
-        if (this.sceneLayerUrl) {
-          this.addSceneLayer(this.sceneLayerUrl);
-        } else {
-          // prompt the user whether they'd like to load a 3D building layer
-          try {
-            const load = await this.modalService.confirm('Enter 3D mode — automatically load a 3D building SceneLayer?');
-            if (load) {
-              const url = await this.modalService.prompt('SceneLayer URL (SceneServer endpoint):');
-              if (url) {
-                this.sceneLayerUrl = url;
-                this.addSceneLayer(url);
-              }
-            }
-          } catch (e) {
-            console.info('User interaction for scene layer skipped or blocked.', e);
+      if (!this.sceneView) {
+        // create SceneView only once
+        this.sceneView = new SceneView({
+          container: 'mapViewDiv',
+          map: this.map,
+          center: [80.7, 7.8],
+          zoom: 16,
+          viewingMode: 'local',
+          camera: {
+            position: { x: 80.7, y: 7.8, z: 1200 },
+            tilt: 60
           }
+        });
+        
+        // attempt to add a 3D building SceneLayer automatically if configured
+        if (!this.sceneLayer && this.sceneLayerUrl) {
+          this.addSceneLayer(this.sceneLayerUrl);
         }
+      } else {
+    // Re-attach the existing scene view to the DOM
+        this.sceneView.container = document.getElementById('mapViewDiv') as any;
       }
+      this.view = this.sceneView;
     } else {
-      this.createMapView();
+      if (!this.mapView) {
+        this.createMapView();
+      } else {
+        // Re-attach the existing map view to the DOM
+        this.mapView.container = document.getElementById('mapViewDiv') as any;
+      }
+      this.view = this.mapView;
     }
 
-    // re-add widgets to the active view
-    const editor = new Editor({ view: this.view });
-    this.view.ui.add(editor, 'top-right');
 
-    const layerList = new LayerList({ view: this.view });
-    this.view.ui.add(layerList, 'top-left');
+        // Refresh UI Widgets safely
+    try {
+      this.view.ui.empty(); // clear existing to avoid duplicates
+      const editor = new Editor({ view: this.view });
+      this.view.ui.add(editor, 'top-right');
+
+      const layerList = new LayerList({ view: this.view });
+      this.view.ui.add(layerList, 'top-left');
+    } catch (e) {
+      console.warn("Failed to add widgets", e);
+    }
+          
+      
   }
 
   private createMapView() {
-    this.view = new MapView({
+    this.mapView = new MapView({
       container: 'mapViewDiv',
       map: this.map,
       center: [80.7, 7.8],
       zoom: 7
     });
+    this.view = this.mapView;
   }
 
   private addSceneLayer(url: string) {
