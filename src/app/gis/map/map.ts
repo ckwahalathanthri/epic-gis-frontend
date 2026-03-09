@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { LayerService } from '../../services/layer';
 import { ModalService } from '../../services/modal.service';
+import { FormsModule } from '@angular/forms';
 import esriConfig from '@arcgis/core/config';
 import Map from '@arcgis/core/Map';
 import MapView from '@arcgis/core/views/MapView';
@@ -19,6 +20,7 @@ import LayerList from '@arcgis/core/widgets/LayerList';
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Sketch from '@arcgis/core/widgets/Sketch';
+import * as reactiveUtils from '@arcgis/core/core/reactiveUtils';
 
 declare const window: any;
 declare const console: any;
@@ -27,7 +29,7 @@ declare function prompt(message?: string): string | null;
 @Component({
   selector: 'app-map',
   standalone: true,
-  imports: [CommonModule, HttpClientModule],
+  imports: [CommonModule, HttpClientModule, FormsModule],
   templateUrl: './map.html',
   styleUrls: ['./map.css']   
 })
@@ -46,6 +48,12 @@ export class MapComponent implements OnInit, OnDestroy {
   private seismicLayer: any;
   private buildingLayer: any;
   is3DMode: boolean = false; 
+  showEditPanel = false;
+  editProperties: { key: string; value: string }[] = [];
+  editingFeatureId: number | null = null;
+  editingLayerId: string | null = null;
+  isSaving = false;
+  saveSuccess = false;
 
   constructor(private http: HttpClient, private layerService: LayerService, private modalService: ModalService) {}
 
@@ -261,20 +269,30 @@ export class MapComponent implements OnInit, OnDestroy {
                          const blob = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
                          const url = URL.createObjectURL(blob);
                          
-                         const layer = new GeoJSONLayer({
-                             url: url,
-                             title: res.layerName || ('layer-' + res.id),
-                             renderer: this.is3DMode ? renderer3D : renderer2D,
-                             elevationInfo: {
-                                 mode: "on-the-ground"
-                             }
-                         });
-                         
-                         // Store renderers AND raw geoJSON so we can recreate the layer on mode switch
-                         (layer as any).customRenderer2D = renderer2D;
-                         (layer as any).customRenderer3D = renderer3D;
-                         (layer as any)._blobUrl = url;
-                         (layer as any)._geoJsonData = geoJson; // Store raw data for layer recreation
+                         const sampleProps = geoJson.features[0]?.properties || {};
+const fieldInfos = Object.keys(sampleProps)
+    .filter((k: string) => k !== '_db_id')
+    .map((key: string) => ({ fieldName: key, label: key }));
+const popupTemplate: any = {
+    title: 'Feature Details',
+    content: [{ type: 'fields', fieldInfos }],
+    actions: [{ id: 'edit-feature', title: '✏️ Edit Feature', className: 'esri-icon-edit' }]
+};
+
+const layer = new GeoJSONLayer({
+    url: url,
+    title: res.layerName || ('layer-' + res.id),
+    renderer: this.is3DMode ? renderer3D : renderer2D,
+    elevationInfo: { mode: 'on-the-ground' },
+    popupTemplate
+});
+
+(layer as any).customRenderer2D = renderer2D;
+(layer as any).customRenderer3D = renderer3D;
+(layer as any)._blobUrl = url;
+(layer as any)._geoJsonData = geoJson;
+(layer as any)._backendLayerId = res.id;
+(layer as any)._popupTemplate = popupTemplate;
                          
                          this.map.add(layer);
                          this.userLayers.push(layer); // <--- Make sure this is added to track it!
@@ -342,7 +360,7 @@ export class MapComponent implements OnInit, OnDestroy {
     //    If GeoJSON layers are already present it compiles 2D LayerViews for them,
     //    and no amount of renderer swapping will make extrusion work afterwards.
     //    By stripping them here the new view initialises with a clean pipeline.
-    const layerDataSnapshot: Array<{title: string; geoJsonData: any; r2d: any; r3d: any}> = [];
+    const layerDataSnapshot: Array<{title: string; geoJsonData: any; r2d: any; r3d: any; backendLayerId: string | null; popupTemplate: any}> = [];
     for (const layer of this.userLayers) {
       const geoJsonData = (layer as any)._geoJsonData;
       const r2d = (layer as any).customRenderer2D;
@@ -352,7 +370,11 @@ export class MapComponent implements OnInit, OnDestroy {
         if ((layer as any)._blobUrl) {
           try { URL.revokeObjectURL((layer as any)._blobUrl); } catch (_) {}
         }
-        layerDataSnapshot.push({ title: layer.title, geoJsonData, r2d, r3d });
+        layerDataSnapshot.push({
+  title: layer.title, geoJsonData, r2d, r3d,
+  backendLayerId: (layer as any)._backendLayerId ?? null,
+  popupTemplate: (layer as any)._popupTemplate ?? null
+});
       }
     }
     // Keep only non-GeoJSON layers in the tracking array
@@ -386,7 +408,7 @@ export class MapComponent implements OnInit, OnDestroy {
     //    At this point the SceneView 3D pipeline is compiled and waiting –
     //    any GeoJSONLayer added now will get a proper 3D LayerView.
     this.view.when(() => {
-      for (const { title, geoJsonData, r2d, r3d } of layerDataSnapshot) {
+      for (const { title, geoJsonData, r2d, r3d,backendLayerId, popupTemplate } of layerDataSnapshot) {
         try {
           const newBlob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
           const newUrl = URL.createObjectURL(newBlob);
@@ -395,13 +417,16 @@ export class MapComponent implements OnInit, OnDestroy {
             url: newUrl,
             title,
             renderer: is3d ? r3d : r2d,
-            elevationInfo: { mode: 'on-the-ground' }
+            elevationInfo: { mode: 'on-the-ground' },
+            popupTemplate: popupTemplate ?? undefined
           });
 
           (newLayer as any).customRenderer2D = r2d;
-          (newLayer as any).customRenderer3D = r3d;
-          (newLayer as any)._geoJsonData = geoJsonData;
-          (newLayer as any)._blobUrl = newUrl;
+      (newLayer as any).customRenderer3D = r3d;
+      (newLayer as any)._geoJsonData = geoJsonData;
+      (newLayer as any)._blobUrl = newUrl;
+      (newLayer as any)._backendLayerId = backendLayerId;
+      (newLayer as any)._popupTemplate = popupTemplate;
 
           this.map.add(newLayer);
           this.userLayers.push(newLayer);
@@ -410,6 +435,8 @@ export class MapComponent implements OnInit, OnDestroy {
           console.warn('Failed to recreate layer', title, e);
         }
       }
+
+      this.setupPopupHandler();
 
       // Restore viewport
       if (currentViewpoint) {
@@ -448,6 +475,9 @@ export class MapComponent implements OnInit, OnDestroy {
       zoom: 7
     });
     this.view = this.mapView;
+    this.mapView.when(() => {       
+    this.setupPopupHandler();
+  });
   }
 
   private addSceneLayer(url: string) {
@@ -460,6 +490,69 @@ export class MapComponent implements OnInit, OnDestroy {
       window.alert('Failed to add SceneLayer. Check the URL or permissions.');
     }
   }
+
+  private setupPopupHandler() {
+  if (!this.view) return;
+  try {
+    reactiveUtils.on(
+      () => this.view.popup,
+      'trigger-action',
+      (event: any) => {
+        if (event.action.id === 'edit-feature') {
+          const feature = this.view.popup.selectedFeature;
+          if (!feature) return;
+          const layer = feature.layer;
+          const backendLayerId = (layer as any)?._backendLayerId;
+          if (backendLayerId) {
+            this.openEditPanel(feature.attributes, backendLayerId);
+          }
+        }
+      }
+    );
+  } catch (e) {
+    console.warn('Could not set up popup handler', e);
+  }
+}
+
+openEditPanel(attributes: any, backendLayerId: string) {
+  this.editingFeatureId = attributes._db_id ?? null;
+  this.editingLayerId = backendLayerId;
+  this.editProperties = Object.entries(attributes)
+    .filter(([key]) => key !== '_db_id' && key !== 'OBJECTID' && key !== 'ObjectID' && !key.startsWith('_'))
+    .map(([key, value]) => ({ key, value: String(value ?? '') }));
+  this.showEditPanel = true;
+  this.saveSuccess = false;
+  try { this.view.popup.close(); } catch (e) {}
+}
+
+saveFeature() {
+  if (!this.editingFeatureId || !this.editingLayerId || this.isSaving) return;
+  this.isSaving = true;
+  const properties: any = {};
+  this.editProperties.forEach(p => { properties[p.key] = p.value; });
+  this.layerService.updateFeature(this.editingLayerId, this.editingFeatureId, properties).subscribe({
+    next: () => {
+      this.isSaving = false;
+      this.saveSuccess = true;
+      this.layerService.emitToast('Feature saved successfully!');
+      setTimeout(() => { this.saveSuccess = false; this.showEditPanel = false; }, 1800);
+    },
+    error: (err: any) => {
+      console.error('Save failed', err);
+      this.layerService.emitToast('Save failed. Please try again.');
+      this.isSaving = false;
+    }
+  });
+}
+
+cancelEdit() {
+  this.showEditPanel = false;
+  this.editProperties = [];
+  this.editingFeatureId = null;
+  this.editingLayerId = null;
+  this.isSaving = false;
+  this.saveSuccess = false;
+}
 
   async toggleForestDensity(enabled: boolean) {
     if (enabled) {
