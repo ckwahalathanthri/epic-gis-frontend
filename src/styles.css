@@ -1,0 +1,121 @@
+﻿/* Global UI styles to resemble the provided GIS Portal screenshot */
+:root {
+	--navy: #12375a;
+	--navy-dark: #0f2f48;
+	--accent: #2b9cff;
+	--panel-bg: #0f2a3e;
+	--muted: #9fb3c8;
+	--card: #ffffff;
+}
+
+html, body, app-root {
+	height: 100%;
+	margin: 0;
+	font-family: Inter, Arial, sans-serif;
+	background: linear-gradient(180deg, #0b2233 0%, #071923 100%);
+	color: #eef6fb;
+}
+
+/* Top navigation bar */
+.topbar {
+	height: 64px;
+	background: linear-gradient(180deg, var(--navy), var(--navy-dark));
+	display: flex;
+	align-items: center;
+	padding: 0 16px;
+	box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+	z-index: 2000;
+}
+
+.topbar .logo { font-weight: 700; color: #fff; font-size: 18px; }
+.topbar .top-actions { margin-left: 24px; display:flex; gap:12px; }
+.topbar .top-actions button { background: transparent; border: none; color: #fff; padding:8px 12px; border-radius:6px; cursor:pointer }
+.topbar .top-actions button:hover { background: rgba(255,255,255,0.03); }
+
+/* Left panel */
+.left-panel {
+	width: 300px;
+	position: fixed;
+	left: 0;
+	top: 64px;
+	bottom: 120px; /* leave room for attributes table */
+	background: linear-gradient(180deg, rgba(8,30,44,0.9), rgba(6,24,40,0.85));
+	padding: 16px;
+	box-shadow: 2px 0 12px rgba(0,0,0,0.5);
+	overflow: auto;
+}
+.left-panel .panel-header { margin-bottom: 0.6rem }
+.left-panel .panel-header h3 { margin: 0 0 4px 0; font-size: 1.05rem; color: var(--ui-text) }
+.left-panel .panel-header .panel-sub { color: var(--muted-text); font-size: 0.85rem }
+.left-panel .section { margin-top: 12px; padding: 10px; border-radius: 8px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
+.left-panel .layer-list .layer-item { padding: 8px 6px; display:flex; align-items:center; gap:8px; }
+.left-panel .layer-list label { display:flex; align-items:center; gap:8px; width:100%; cursor:pointer }
+.left-panel .layer-name { font-weight:600; color:var(--ui-text) }
+.left-panel .layer-dot { width:12px; height:12px; border-radius:2px; display:inline-block; margin-left:6px }
+
+/* Primary pill style for prominent control (e.g., 3D Urban View) */
+.left-panel .layer-item.primary-pill label {
+	background: linear-gradient(180deg, var(--bright-blue), color-mix(in srgb, var(--bright-blue) 75%, black 12%));
+	color: #fff;
+	padding: 10px 14px;
+	border-radius: 28px;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	box-shadow: 0 8px 22px rgba(43,156,255,0.14);
+	width: 100%;
+}
+.left-panel .layer-item.primary-pill .layer-name { color: #fff; font-weight:700 }
+.left-panel .layer-item.primary-pill input { display: none }
+
+.tool-buttons { display:flex; gap:8px; flex-wrap:wrap }
+.tool-btn { display:flex; align-items:center; gap:8px; padding:8px 10px; background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--ui-text); border-radius:8px; cursor:pointer }
+.tool-btn span { font-size:0.85rem }
+.left-panel .actions { display:flex; flex-direction:column; gap:8px }
+.left-panel .upload-btn { padding:10px 12px; font-weight:600 }
+
+/* Main map area */
+.map-area {
+	margin-left: 300px;
+	margin-top: 64px;
+	margin-bottom: 120px;
+	height: calc(100vh - 184px);
+	position: relative;
+}
+
+#mapViewDiv, #cesiumContainer { width: 100%; height: 100%; border-radius: 6px; overflow: hidden; }
+
+/* Right toolbar floating */
+.right-toolbar { position: fixed; right: 18px; top: 88px; display:flex; flex-direction:column; gap:8px; z-index:1600 }
+.right-toolbar .tool { width:44px; height:44px; border-radius:8px; background: rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; cursor:pointer }
+
+/* Bottom attributes table */
+.attributes-table {
+	position: fixed;
+	left: 300px;
+	right: 18px;
+	bottom: 18px;
+	height: 100px;
+	background: linear-gradient(180deg, rgba(7,20,30,0.9), rgba(8,28,40,0.95));
+	border-radius: 8px;
+	box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+	padding: 12px;
+	overflow: auto;
+}
+
+/* small misc */
+.upload-panel { z-index: 1500; }
+
+/* responsive tweaks */
+@media (max-width: 900px) {
+	.left-panel { width: 240px; }
+	.map-area { margin-left: 240px; }
+	.attributes-table { left: 240px; }
+}
+
+/* Simple table styling for attribute rows */
+.attributes-table table { width: 100%; border-collapse: collapse; color: #dfeffb }
+.attributes-table th { text-align:left; font-weight:600; color:#cfe9ff }
+.attributes-table td { padding:6px 8px; border-top:1px solid rgba(255,255,255,0.03) }
+
+/* End styles */

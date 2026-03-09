@@ -1,0 +1,15 @@
+<div class="modal-overlay" *ngIf="visible" (click)="cancel()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ request?.title || (request?.type === 'confirm' ? 'Confirm' : request?.type === 'alert' ? 'Alert' : 'Input') }}</h3>
+    </div>
+    <div class="modal-body">
+      <p>{{ request?.message }}</p>
+      <input *ngIf="request?.type === 'prompt'" [(ngModel)]="value" [placeholder]="request?.placeholder || ''" />
+    </div>
+    <div class="modal-actions">
+      <button *ngIf="request?.type !== 'alert'" (click)="cancel()">Cancel</button>
+      <button class="primary" (click)="ok()">OK</button>
+    </div>
+  </div>
+</div>

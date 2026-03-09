@@ -1,0 +1,18 @@
+<div class="toolbar">
+  <!-- Upload File -->
+  <label>
+    Upload Data
+    <input type="file" (change)="uploadFile($event)" accept=".zip,.kml,.kmz,.json,.geojson"/>
+  </label>
+  
+  <!-- Toggle 3D Button -->
+  <button (click)="toggle3D()" style="background: #e91e63;">
+    {{ is3DMode ? 'Switch to 2D' : 'Switch to 3D' }}
+  </button>
+
+  <button (click)="addFeatureLayer()">+ Layer (Web)</button>
+  <button (click)="addKMLLayer()">+ KML URL</button>
+  <button (click)="showAttributes()">View Data</button>
+</div>
+
+<div id="mapViewDiv" class="map-view"></div>
