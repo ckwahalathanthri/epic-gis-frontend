@@ -34,6 +34,10 @@ declare function prompt(message?: string): string | null;
 
 export class MapComponent implements OnInit, OnDestroy {
   private map!: Map;
+<<<<<<< HEAD
+=======
+  // view may be MapView or SceneView
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
   private view: any;
   private mapView?: MapView;
   private sceneView?: SceneView;
@@ -41,6 +45,13 @@ export class MapComponent implements OnInit, OnDestroy {
   private userLayers: any[] = [];
   private graphicsLayer?: GraphicsLayer;
   private sketchWidget?: Sketch;
+<<<<<<< HEAD
+=======
+  // Default public SceneLayer URL (example). Replace with your SceneServer URL to auto-load 3D buildings.
+  // Example public SceneLayer (may be rate-limited or changed by provider):
+  // https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer
+  // private sceneLayerUrl: string | null = 'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer';
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
   private sceneLayerUrl: string | null = null;
   private forestLayer: any;
   private seismicLayer: any;
@@ -106,6 +117,7 @@ export class MapComponent implements OnInit, OnDestroy {
                     try {
                     // If backend returned a URL, use it
                     if (g && typeof g === 'object' && g.type === 'FeatureCollection') {
+<<<<<<< HEAD
                       if (!g.features || g.features.length === 0) return;
                       
                       const firstGeom = g.features[0].geometry.type;
@@ -162,6 +174,11 @@ export class MapComponent implements OnInit, OnDestroy {
                       (geo as any)._blobUrl = url;
                       (geo as any)._geoJsonData = g;
                       
+=======
+                      const blob = new (window as any).Blob([JSON.stringify(g)], { type: 'application/json' });
+                      const url = (window as any).URL.createObjectURL(blob);
+                      const geo = new GeoJSONLayer({ url, title: l.name ?? ('layer-' + l.id) });
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
                       this.map.add(geo);
                       this.userLayers.push(geo);
                     } else if (g && g.url) {
@@ -241,18 +258,35 @@ export class MapComponent implements OnInit, OnDestroy {
                                  }
                              };
 
+<<<<<<< HEAD
                              // 3D Extruded Polygons - fixed 15m height, no Arcade (avoids expression failures)
+=======
+                             // 3D Extruded Polygons
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
                              renderer3D = {
                                  type: "simple",
                                  symbol: {
                                      type: "polygon-3d",
                                      symbolLayers: [{
                                          type: "extrude",
+<<<<<<< HEAD
                                          size: 15,
                                          material: { color: [0, 200, 255, 0.9] }, // Bright cyan - easy to see
                                          edges: { type: "solid", color: [0, 80, 120, 1.0], size: 0.5 }
                                      }]
                                  }
+=======
+                                         material: { color: [255, 0, 255, 0.8] },
+                                         edges: { type: "solid", color: [50, 50, 50, 0.5], size: 1 }
+                                     }]
+                                 },
+                                 visualVariables: [{
+                                     type: "size",
+                                     // Safe Arcade Script: looks for height or levels, defaults to 15m
+                                     valueExpression: "var h = 15; if (HasKey($feature, 'height') && !IsEmpty($feature.height)) { h = $feature.height; } else if (HasKey($feature, 'levels') && !IsEmpty($feature.levels)) { h = $feature.levels * 3; } return Number(h);",
+                                     valueUnit: "meters"
+                                 }]
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
                               };
                                  
                             }
@@ -264,6 +298,7 @@ export class MapComponent implements OnInit, OnDestroy {
                          const layer = new GeoJSONLayer({
                              url: url,
                              title: res.layerName || ('layer-' + res.id),
+<<<<<<< HEAD
                              renderer: this.is3DMode ? renderer3D : renderer2D,
                              elevationInfo: {
                                  mode: "on-the-ground"
@@ -275,6 +310,15 @@ export class MapComponent implements OnInit, OnDestroy {
                          (layer as any).customRenderer3D = renderer3D;
                          (layer as any)._blobUrl = url;
                          (layer as any)._geoJsonData = geoJson; // Store raw data for layer recreation
+=======
+                             // Apply correct renderer based on the STARTING view
+                             renderer: this.is3DMode ? renderer3D : renderer2D
+                         });
+                         
+                         // Store both renderers inside the layer object for later swapping
+                         (layer as any).customRenderer2D = renderer2D;
+                         (layer as any).customRenderer3D = renderer3D;
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
                          
                          this.map.add(layer);
                          this.userLayers.push(layer); // <--- Make sure this is added to track it!
@@ -324,10 +368,15 @@ export class MapComponent implements OnInit, OnDestroy {
    * Switch between 2D (MapView) and 3D (SceneView).
    */
   async setViewMode(mode: '2d' | '3d') {
+<<<<<<< HEAD
+=======
+    // if already in requested mode do nothing
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
     const is3d = mode === '3d';
     if (is3d && this.view?.type === '3d') return;
     if (!is3d && this.view?.type === '2d') return;
 
+<<<<<<< HEAD
     // 1. Capture viewport before detaching
     let currentViewpoint: any = null;
     if (this.view?.viewpoint) {
@@ -366,10 +415,46 @@ export class MapComponent implements OnInit, OnDestroy {
           map: this.map,
           viewingMode: 'global',
         });
+=======
+    // 1. CAPTURE CURRENT VIEWPORT BEFORE DETACHING
+    let currentViewpoint: any = null;
+    if (this.view) {
+      if (this.view.viewpoint) {
+        currentViewpoint = this.view.viewpoint.clone();
+        
+        // If transitioning from 2D to 3D, automatically add a slight tilt so buildings stand out
+        if (is3d && currentViewpoint.camera) {
+            currentViewpoint.camera.tilt = 60; 
+        }
+      }
+      this.view.container = null; 
+    }
+
+    if (is3d) {
+      if (!this.sceneView) {
+        // create SceneView only once
+        this.sceneView = new SceneView({
+          container: 'mapViewDiv',
+          map: this.map,
+          // center: [80.7, 7.8],
+          // zoom: 16,
+          viewingMode: 'local',
+          camera: {
+            position: { x: 80.7, y: 7.8, z: 1200 },
+            tilt: 60
+          }
+        });
+        
+        // attempt to add a 3D building SceneLayer automatically if configured
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
         if (!this.sceneLayer && this.sceneLayerUrl) {
           this.addSceneLayer(this.sceneLayerUrl);
         }
       } else {
+<<<<<<< HEAD
+=======
+    // Re-attach the existing scene view to the DOM
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
         this.sceneView.container = document.getElementById('mapViewDiv') as any;
       }
       this.view = this.sceneView;
@@ -377,11 +462,16 @@ export class MapComponent implements OnInit, OnDestroy {
       if (!this.mapView) {
         this.createMapView();
       } else {
+<<<<<<< HEAD
+=======
+        // Re-attach the existing map view to the DOM
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
         this.mapView.container = document.getElementById('mapViewDiv') as any;
       }
       this.view = this.mapView;
     }
 
+<<<<<<< HEAD
     // 4. After the view's WebGL pipeline is fully ready, inject fresh layers.
     //    At this point the SceneView 3D pipeline is compiled and waiting –
     //    any GeoJSONLayer added now will get a proper 3D LayerView.
@@ -438,6 +528,32 @@ export class MapComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.warn('Failed to add widgets', e);
     }
+=======
+    if (currentViewpoint) {
+      this.view.viewpoint = currentViewpoint;
+    }
+
+    // SWAP RENDERERS FOR ALL UPLOADED LAYERS BASED ON 2D/3D MODE
+    this.userLayers.forEach((layer: any) => {
+        if (layer.customRenderer2D && layer.customRenderer3D) {
+            layer.renderer = is3d ? layer.customRenderer3D : layer.customRenderer2D;
+        }
+    });
+
+    // Refresh UI Widgets safely
+    try {
+      this.view.ui.empty(); // clear existing to avoid duplicates
+      const editor = new Editor({ view: this.view });
+      this.view.ui.add(editor, 'top-right');
+
+      const layerList = new LayerList({ view: this.view });
+      this.view.ui.add(layerList, 'top-left');
+    } catch (e) {
+      console.warn("Failed to add widgets", e);
+    }
+          
+      
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
   }
 
   private createMapView() {
@@ -505,6 +621,7 @@ export class MapComponent implements OnInit, OnDestroy {
   async toggleBuildingFootprints(enabled: boolean) {
     if (enabled) {
       if (!this.buildingLayer) {
+<<<<<<< HEAD
         const urlInput = await this.modalService.prompt('Enter Feature/Scene layer URL for Building Footprints (leave blank for default 3D Buildings):');
         const url = urlInput ? urlInput.trim() : 'https://basemaps3d.arcgis.com/arcgis/rest/services/OpenStreetMap3D_Buildings_v1/SceneServer';
         
@@ -542,6 +659,24 @@ export class MapComponent implements OnInit, OnDestroy {
       } else { 
         try { this.map.add(this.buildingLayer); } catch (e) { } 
       }
+=======
+        const url = await this.modalService.prompt('Enter Feature/Scene layer URL for Building Footprints (SceneServer/FeatureServer) (leave blank to add placeholder):');;
+        if (url) {
+          // if in 3d prefer SceneLayer
+          if (this.sceneView) {
+            try { this.buildingLayer = new SceneLayer({ url }); }
+            catch (e) { this.buildingLayer = new FeatureLayer({ url, outFields: ['*'] }); }
+          } else {
+            try { this.buildingLayer = new FeatureLayer({ url, outFields: ['*'] }); }
+            catch (e) { this.buildingLayer = new TileLayer({ url }); }
+          }
+        } else {
+          this.buildingLayer = new GraphicsLayer({ title: 'Building Footprints' });
+        }
+        this.map.add(this.buildingLayer);
+        this.userLayers.push(this.buildingLayer);
+      } else { try { this.map.add(this.buildingLayer); } catch (e) { } }
+>>>>>>> a6084cc514110c8b2874bc7e3794692715e5e607
     } else {
       if (this.buildingLayer) { try { this.map.remove(this.buildingLayer); } catch (e) { } }
     }
