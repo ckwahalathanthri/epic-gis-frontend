@@ -34,7 +34,6 @@ declare function prompt(message?: string): string | null;
 
 export class MapComponent implements OnInit, OnDestroy {
   private map!: Map;
-  // view may be MapView or SceneView
   private view: any;
   private mapView?: MapView;
   private sceneView?: SceneView;
@@ -42,10 +41,6 @@ export class MapComponent implements OnInit, OnDestroy {
   private userLayers: any[] = [];
   private graphicsLayer?: GraphicsLayer;
   private sketchWidget?: Sketch;
-  // Default public SceneLayer URL (example). Replace with your SceneServer URL to auto-load 3D buildings.
-  // Example public SceneLayer (may be rate-limited or changed by provider):
-  // https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer
-  // private sceneLayerUrl: string | null = 'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/LosAngeles_3D_Buildings/SceneServer';
   private sceneLayerUrl: string | null = null;
   private forestLayer: any;
   private seismicLayer: any;
@@ -193,23 +188,18 @@ export class MapComponent implements OnInit, OnDestroy {
                                  }
                              };
 
-                             // 3D Extruded Polygons
+                             // 3D Extruded Polygons - fixed 15m height, no Arcade (avoids expression failures)
                              renderer3D = {
                                  type: "simple",
                                  symbol: {
                                      type: "polygon-3d",
                                      symbolLayers: [{
                                          type: "extrude",
-                                         material: { color: [255, 0, 255, 0.8] },
-                                         edges: { type: "solid", color: [50, 50, 50, 0.5], size: 1 }
+                                         size: 15,
+                                         material: { color: [0, 200, 255, 0.9] }, // Bright cyan - easy to see
+                                         edges: { type: "solid", color: [0, 80, 120, 1.0], size: 0.5 }
                                      }]
-                                 },
-                                 visualVariables: [{
-                                     type: "size",
-                                     // Safe Arcade Script: looks for height or levels, defaults to 15m
-                                     valueExpression: "var h = 15; if (HasKey($feature, 'height') && !IsEmpty($feature.height)) { h = $feature.height; } else if (HasKey($feature, 'levels') && !IsEmpty($feature.levels)) { h = $feature.levels * 3; } return Number(h);",
-                                     valueUnit: "meters"
-                                 }]
+                                 }
                               };
                                  
                             }
@@ -221,13 +211,17 @@ export class MapComponent implements OnInit, OnDestroy {
                          const layer = new GeoJSONLayer({
                              url: url,
                              title: res.layerName || ('layer-' + res.id),
-                             // Apply correct renderer based on the STARTING view
-                             renderer: this.is3DMode ? renderer3D : renderer2D
+                             renderer: this.is3DMode ? renderer3D : renderer2D,
+                             elevationInfo: {
+                                 mode: "on-the-ground"
+                             }
                          });
                          
-                         // Store both renderers inside the layer object for later swapping
+                         // Store renderers AND raw geoJSON so we can recreate the layer on mode switch
                          (layer as any).customRenderer2D = renderer2D;
                          (layer as any).customRenderer3D = renderer3D;
+                         (layer as any)._blobUrl = url;
+                         (layer as any)._geoJsonData = geoJson; // Store raw data for layer recreation
                          
                          this.map.add(layer);
                          this.userLayers.push(layer); // <--- Make sure this is added to track it!
@@ -292,19 +286,16 @@ export class MapComponent implements OnInit, OnDestroy {
 
     if (is3d) {
       if (!this.sceneView) {
-        // create SceneView only once
+        // create SceneView only once - use 'global' mode for standard lat/lon data
         this.sceneView = new SceneView({
           container: 'mapViewDiv',
           map: this.map,
-          viewingMode: 'local',
+          viewingMode: 'global',
         });
-        
-        // attempt to add a 3D building SceneLayer automatically if configured
         if (!this.sceneLayer && this.sceneLayerUrl) {
           this.addSceneLayer(this.sceneLayerUrl);
         }
       } else {
-    // Re-attach the existing scene view to the DOM
         this.sceneView.container = document.getElementById('mapViewDiv') as any;
       }
       this.view = this.sceneView;
@@ -312,45 +303,74 @@ export class MapComponent implements OnInit, OnDestroy {
       if (!this.mapView) {
         this.createMapView();
       } else {
-        // Re-attach the existing map view to the DOM
         this.mapView.container = document.getElementById('mapViewDiv') as any;
       }
       this.view = this.mapView;
     }
 
-    // 2. WAIT FOR THE VIEW TO BE READY, THEN APPLY THE CAPTURED VIEWPOINT
-    if (currentViewpoint) {
-      this.view.when(() => {
+    // 2. WAIT FOR VIEW TO BE READY, THEN recreate layers and restore viewport.
+    // Layer recreation MUST happen inside when() so the SceneView pipeline is
+    // fully initialized before we add layers — otherwise 3D extrusion is ignored.
+    const layersSnapshot = [...this.userLayers];
+    this.view.when(() => {
+
+      // Recreate all uploaded GeoJSON layers with the correct renderer for this mode
+      const newUserLayers: any[] = [];
+      for (const layer of layersSnapshot) {
+        const r2d = (layer as any).customRenderer2D;
+        const r3d = (layer as any).customRenderer3D;
+        const geoJsonData = (layer as any)._geoJsonData;
+
+        if (r2d && r3d && geoJsonData) {
+          try {
+            this.map.remove(layer);
+            if ((layer as any)._blobUrl) {
+              try { URL.revokeObjectURL((layer as any)._blobUrl); } catch (_) {}
+            }
+
+            const newBlob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
+            const newUrl = URL.createObjectURL(newBlob);
+
+            const newLayer = new GeoJSONLayer({
+              url: newUrl,
+              title: layer.title,
+              renderer: is3d ? r3d : r2d,
+              elevationInfo: { mode: 'on-the-ground' }
+            });
+
+            (newLayer as any).customRenderer2D = r2d;
+            (newLayer as any).customRenderer3D = r3d;
+            (newLayer as any)._geoJsonData = geoJsonData;
+            (newLayer as any)._blobUrl = newUrl;
+
+            this.map.add(newLayer);
+            newUserLayers.push(newLayer);
+            console.info(`Layer recreated for ${is3d ? '3D' : '2D'} mode:`, layer.title);
+          } catch (e) {
+            console.warn('Failed to recreate layer', layer.title, e);
+            newUserLayers.push(layer);
+          }
+        } else {
+          newUserLayers.push(layer);
+        }
+      }
+      this.userLayers = newUserLayers;
+
+      // Restore viewport after layers are ready
+      if (currentViewpoint) {
         if (is3d) {
-          // Convert 2D viewpoint to a 3D camera with tilt using goTo()
-          // goTo accepts a viewpoint and handles 2D->3D conversion gracefully
           this.view.goTo({
             target: currentViewpoint.targetGeometry ?? currentViewpoint.center,
-            zoom: currentViewpoint.scale 
-              ? undefined 
-              : (this.mapView?.zoom ?? 15),
             scale: currentViewpoint.scale,
-            tilt: 60   // Add tilt so buildings are visible in 3D
+            tilt: 60
           }).catch((e: any) => {
-            // Fallback: just set viewpoint directly if goTo fails
             try { this.view.viewpoint = currentViewpoint; } catch (_) {}
           });
         } else {
-          // For 2D, directly set the viewpoint - no tilt needed
-          try {
-            this.view.viewpoint = currentViewpoint;
-          } catch (e) {
-            console.warn('Could not restore viewpoint', e);
-          }
+          try { this.view.viewpoint = currentViewpoint; }
+          catch (e) { console.warn('Could not restore viewpoint', e); }
         }
-      });
-    }
-
-    // SWAP RENDERERS FOR ALL UPLOADED LAYERS BASED ON 2D/3D MODE
-    this.userLayers.forEach((layer: any) => {
-        if (layer.customRenderer2D && layer.customRenderer3D) {
-            layer.renderer = is3d ? layer.customRenderer3D : layer.customRenderer2D;
-        }
+      }
     });
 
     // Refresh UI Widgets safely
