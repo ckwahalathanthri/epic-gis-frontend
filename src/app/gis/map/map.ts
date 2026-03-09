@@ -277,23 +277,17 @@ export class MapComponent implements OnInit, OnDestroy {
    * Switch between 2D (MapView) and 3D (SceneView).
    */
   async setViewMode(mode: '2d' | '3d') {
-    // if already in requested mode do nothing
     const is3d = mode === '3d';
     if (is3d && this.view?.type === '3d') return;
     if (!is3d && this.view?.type === '2d') return;
 
     // 1. CAPTURE CURRENT VIEWPORT BEFORE DETACHING
     let currentViewpoint: any = null;
+    if (this.view?.viewpoint) {
+      currentViewpoint = this.view.viewpoint.clone();
+    }
     if (this.view) {
-      if (this.view.viewpoint) {
-        currentViewpoint = this.view.viewpoint.clone();
-        
-        // If transitioning from 2D to 3D, automatically add a slight tilt so buildings stand out
-        if (is3d && currentViewpoint.camera) {
-            currentViewpoint.camera.tilt = 60; 
-        }
-      }
-      this.view.container = null; 
+      this.view.container = null;
     }
 
     if (is3d) {
@@ -302,13 +296,7 @@ export class MapComponent implements OnInit, OnDestroy {
         this.sceneView = new SceneView({
           container: 'mapViewDiv',
           map: this.map,
-          // center: [80.7, 7.8],
-          // zoom: 16,
           viewingMode: 'local',
-          camera: {
-            position: { x: 80.7, y: 7.8, z: 1200 },
-            tilt: 60
-          }
         });
         
         // attempt to add a 3D building SceneLayer automatically if configured
@@ -330,8 +318,32 @@ export class MapComponent implements OnInit, OnDestroy {
       this.view = this.mapView;
     }
 
+    // 2. WAIT FOR THE VIEW TO BE READY, THEN APPLY THE CAPTURED VIEWPOINT
     if (currentViewpoint) {
-      this.view.viewpoint = currentViewpoint;
+      this.view.when(() => {
+        if (is3d) {
+          // Convert 2D viewpoint to a 3D camera with tilt using goTo()
+          // goTo accepts a viewpoint and handles 2D->3D conversion gracefully
+          this.view.goTo({
+            target: currentViewpoint.targetGeometry ?? currentViewpoint.center,
+            zoom: currentViewpoint.scale 
+              ? undefined 
+              : (this.mapView?.zoom ?? 15),
+            scale: currentViewpoint.scale,
+            tilt: 60   // Add tilt so buildings are visible in 3D
+          }).catch((e: any) => {
+            // Fallback: just set viewpoint directly if goTo fails
+            try { this.view.viewpoint = currentViewpoint; } catch (_) {}
+          });
+        } else {
+          // For 2D, directly set the viewpoint - no tilt needed
+          try {
+            this.view.viewpoint = currentViewpoint;
+          } catch (e) {
+            console.warn('Could not restore viewpoint', e);
+          }
+        }
+      });
     }
 
     // SWAP RENDERERS FOR ALL UPLOADED LAYERS BASED ON 2D/3D MODE
@@ -351,9 +363,7 @@ export class MapComponent implements OnInit, OnDestroy {
       this.view.ui.add(layerList, 'top-left');
     } catch (e) {
       console.warn("Failed to add widgets", e);
-    }
-          
-      
+    }  
   }
 
   private createMapView() {
