@@ -37,9 +37,10 @@ export class LayerService {
   }
 
   // 3. Update Feature (Edit)
-  updateFeature(layerId: string, featureDto: any): Observable<any> {
-    // Matches PUT /api/layers/{layerId}/features
-    return this.http.put<any>(`${this.baseUrl}/${layerId}/features`, featureDto);
+  updateFeature(layerId: string, featureId: number, properties: any, geometry?: any): Observable<any> {
+    const body: any = { id: featureId, properties };
+    if (geometry) body.geometry = geometry;
+    return this.http.put(`${this.baseUrl}/${layerId}/features`, body);
   }
 
   // Emits a toast message
@@ -92,7 +93,7 @@ export class LayerService {
             properties: attributes
             // geometry: ... (ArcGIS editor might send separate geometry)
         };
-        return this.updateFeature(layerId, dto);
+        return this.updateFeature(layerId, dto.id, dto.properties, undefined);
     }
     
     return of({ success: false, message: 'Operation not supported yet' });

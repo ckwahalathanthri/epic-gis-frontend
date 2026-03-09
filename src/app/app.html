@@ -30,8 +30,8 @@
 
 <div class="app-shell" *ngIf="showMap">
 
-  <div class="map-area" style="position:relative;height:calc(100vh - var(--topbar-height));display:flex;justify-content:center;align-items:center;padding:0 1rem;">
-    <div class="map-wrapper" style="width:100%;max-width:1200px;height:100%;">
+  <div class="map-area" style="position:relative;height:calc(100vh - var(--topbar-height));">
+  <div class="map-wrapper" style="width:100%;height:100%;">
       <app-map *ngIf="!useCesium" style="width:100%;height:100%;display:block;"></app-map>
       <app-cesium-map *ngIf="useCesium" style="width:100%;height:100%;display:block;"></app-cesium-map>
     </div>
