@@ -156,12 +156,23 @@ export class MapComponent implements OnInit, OnDestroy {
 
                       const blob = new (window as any).Blob([JSON.stringify(g)], { type: 'application/json' });
                       const url = (window as any).URL.createObjectURL(blob);
+
+                      const sampleProps = g.features[0]?.properties || {};
+const fieldInfos = Object.keys(sampleProps)
+    .filter((k: string) => k !== '_db_id')
+    .map((key: string) => ({ fieldName: key, label: key }));
+const layerPopupTemplate: any = {
+    title: 'Feature Details',
+    content: [{ type: 'fields', fieldInfos }],
+    actions: [{ id: 'edit-feature', title: '✏️ Edit Feature', className: 'esri-icon-edit' }]
+};
                       
                       const geo = new GeoJSONLayer({ 
                           url, 
                           title: l.name ?? ('layer-' + l.id),
                           renderer: this.is3DMode ? renderer3D : renderer2D,
-                          elevationInfo: { mode: "on-the-ground" }
+                          elevationInfo: { mode: "on-the-ground" },
+                          popupTemplate: layerPopupTemplate   
                       });
                       
                       // Attach renderers and data for view switching
@@ -169,6 +180,9 @@ export class MapComponent implements OnInit, OnDestroy {
                       (geo as any).customRenderer3D = renderer3D;
                       (geo as any)._blobUrl = url;
                       (geo as any)._geoJsonData = g;
+                      (geo as any)._backendLayerId = l.id;
+                      (geo as any)._popupTemplate = layerPopupTemplate;
+
                       
                       this.map.add(geo);
                       this.userLayers.push(geo);
