@@ -1,0 +1,50 @@
+.dashboard-layout {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 300px;
+    background: #2c2c2c;
+    color: white;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.map-wrapper {
+    flex-grow: 1;
+    position: relative;
+}
+
+.tool-section {
+    background: #3a3a3a;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.layer-list {
+    list-style: none;
+    padding: 0;
+}
+
+.layer-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #444;
+}
+
+h3, h4 { margin-top: 0; }
+
+.btn-sm {
+    padding: 2px 6px;
+    font-size: 0.8em;
+    margin-left: 5px;
+    cursor: pointer;
+}
