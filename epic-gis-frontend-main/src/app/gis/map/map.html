@@ -1,0 +1,71 @@
+<!-- Slide-in Edit Panel (left side) -->
+<div class="edit-panel" [class.open]="showEditPanel">
+  <div class="edit-panel-header">
+    <span class="edit-panel-title">✏️ Edit Feature</span>
+    <button class="edit-panel-close" (click)="cancelEdit()">✕</button>
+  </div>
+
+  <div class="edit-panel-body">
+    <div class="edit-field" *ngFor="let prop of editProperties">
+      <label class="edit-label">{{ prop.key }}</label>
+      <input class="edit-input" type="text" [(ngModel)]="prop.value" />
+    </div>
+    <div *ngIf="editProperties.length === 0" class="edit-empty">
+      No editable properties found.
+    </div>
+  </div>
+
+  <div class="edit-panel-footer">
+    <div *ngIf="!editingLayerId" class="edit-readonly-msg">⚠️ View-only — this layer has no backend linked.</div>
+    <div *ngIf="saveSuccess" class="save-success-msg">✅ Saved!</div>
+    <button class="btn-save" (click)="saveFeature()" [disabled]="isSaving || saveSuccess || !editingLayerId">
+      <span *ngIf="isSaving">⏳ Saving…</span>
+      <span *ngIf="!isSaving && !saveSuccess">💾 Save Changes</span>
+      <span *ngIf="saveSuccess">✅ Saved</span>
+    </button>
+    <button class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+  </div>
+</div>
+
+<!-- Floating Toolbar -->
+<div class="toolbar">
+  <div class="toolbar-brand">🗺️ GIS Studio</div>
+
+  <div class="toolbar-section">
+    <label class="toolbar-btn upload-btn" title="Upload Shapefile / GeoJSON / KML">
+      <span class="btn-icon">📁</span>
+      <span class="btn-text">Upload Layer</span>
+      <input type="file" (change)="uploadFile($event)" accept=".zip,.json,.geojson"/>
+    </label>
+  </div>
+
+  <div class="toolbar-divider"></div>
+
+  <div class="toolbar-section">
+    <button class="toolbar-btn" [class.btn-3d-active]="is3DMode" (click)="toggle3D()">
+      <span class="btn-icon">{{ is3DMode ? '🗺️' : '🌐' }}</span>
+      <span class="btn-text">{{ is3DMode ? 'Switch to 2D' : 'Switch to 3D' }}</span>
+    </button>
+  </div>
+
+  <div class="toolbar-divider"></div>
+
+  <div class="toolbar-section">
+    <button class="toolbar-btn" (click)="addFeatureLayer()">
+      <span class="btn-icon">＋</span>
+      <span class="btn-text">Add Web Layer</span>
+    </button>
+    <button class="toolbar-btn" (click)="addKMLLayer()">
+      <span class="btn-icon">📌</span>
+      <span class="btn-text">Add KML URL</span>
+    </button>
+  </div>
+
+  <div class="toolbar-divider"></div>
+
+  <div class="toolbar-section toolbar-hint">
+    Click a building to highlight it, then press <strong>Edit</strong> in the popup to open the editor.
+  </div>
+</div>
+
+<div id="mapViewDiv" class="map-view"></div>

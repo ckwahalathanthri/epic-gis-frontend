@@ -1,0 +1,46 @@
+<!-- topbar -->
+ <header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Lanka GIS</div>
+    <nav class="map-type"></nav>
+    <div class="top-actions">
+      <button title="View Map" (click)="goToMap()" *ngIf="!showMap">🗺️ View Map</button>
+      <button title="View Files" (click)="goToFiles()" *ngIf="showMap">🗂️ View Files</button>
+      <button title="Upload Data">⬆️ Upload Data</button>
+      <button title="Add Layer">📂 Add Layer</button>
+      <button title="Edit Features">✏️ Edit Features <span style="background:#34c759;color:#06201a;padding:2px 6px;border-radius:12px;margin-left:6px;">ON</span></button>
+      <button title="Analytics">📊 Analytics</button>
+    </div>
+  </div>
+  <div class="topbar-center">
+    <input class="search" placeholder="Search address or coordinates..." />
+  </div>
+  <div class="topbar-right">
+    <button class="icon-btn" (click)="toggleCesium()">{{ useCesium ? 'Cesium' : 'ArcGIS' }}</button>
+    <button class="icon-btn">⚙️</button>
+    <button class="icon-btn">🔔</button>
+    <button class="icon-btn">👤</button>
+  </div>
+</header>
+
+  <!-- toast -->
+  <div class="app-toast" *ngIf="toastMessage">
+    <div class="app-toast-inner">{{ toastMessage }}</div>
+  </div>
+
+<div class="app-shell" *ngIf="showMap">
+
+  <div class="map-area" style="position:relative;height:calc(100vh - var(--topbar-height));">
+  <div class="map-wrapper" style="width:100%;height:100%;">
+      <app-map *ngIf="!useCesium" style="width:100%;height:100%;display:block;"></app-map>
+      <app-cesium-map *ngIf="useCesium" style="width:100%;height:100%;display:block;"></app-cesium-map>
+    </div>
+  </div>
+
+
+</div>
+
+<div class="page-container" *ngIf="!showMap" style="padding-top: var(--topbar-height); height: 100vh; overflow-y: auto;">
+  <router-outlet></router-outlet>
+</div>
+
