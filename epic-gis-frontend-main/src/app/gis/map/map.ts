@@ -48,6 +48,9 @@ export class MapComponent implements OnInit, OnDestroy {
   private seismicLayer: any;
   private buildingLayer: any;
   private highlightHandle: any = null;
+  private activeEditor: any = null;
+  private activeSketch: any = null;
+  private tempGraphicsLayer: GraphicsLayer | null = null;
   is3DMode: boolean = false; 
   showEditPanel = false;
   editProperties: { key: string; value: string }[] = [];
@@ -525,13 +528,14 @@ const layer = new GeoJSONLayer({
       () => this.view.popup,
       'trigger-action',
       (event: any) => {
-        if (event.action.id === 'edit-feature') {
+        if (event.action.id === 'edit-feature' || event.action.id === 'edit') {
           const feature = this.view.popup.selectedFeature;
           if (!feature) return;
           const layer = feature.layer;
           // backendLayerId may be null for building layers (SceneLayer / OSM)
           const backendLayerId = (layer as any)?._backendLayerId ?? null;
           this.openEditPanel(feature.attributes, backendLayerId);
+          try { this.enableEditingForFeature(feature, backendLayerId); } catch (e) { console.warn('enableEditingForFeature failed', e); }
         }
       }
     );
@@ -572,6 +576,105 @@ const layer = new GeoJSONLayer({
   }
 }
 
+/**
+ * Enable editing tools for a selected feature.
+ * - If the underlying layer is an editable FeatureLayer, add an Editor configured for it.
+ * - Otherwise create a temporary GraphicsLayer and enable the Sketch widget for local edits.
+ */
+enableEditingForFeature(feature: any, backendLayerId: string | null = null) {
+  // ensure any existing active editors are removed first
+  this.disableActiveEditing();
+
+  // store editing context
+  try { this.editingFeatureId = feature.attributes?._db_id ?? feature.attributes?.OBJECTID ?? feature.attributes?.objectId ?? this.editingFeatureId; } catch (_) {}
+  this.editingLayerId = backendLayerId ?? this.editingLayerId;
+
+  const layer = feature.layer;
+  // If the layer appears to be a FeatureLayer (has type or supports editing via url), try Editor
+  try {
+    const isFeatureLayer = (layer && (layer.type === 'feature' || (layer.declaredClass && layer.declaredClass.indexOf('FeatureLayer') !== -1)));
+    if (isFeatureLayer) {
+      this.activeEditor = new Editor({ view: this.view, layerInfos: [{ layer }] });
+      this.view.ui.add(this.activeEditor, 'top-right');
+      return;
+    }
+  } catch (e) { /* ignore and fallback to sketch */ }
+
+  // Fallback: enable a temporary GraphicsLayer + Sketch to allow user to modify geometry locally
+  try {
+    if (!this.tempGraphicsLayer) {
+      this.tempGraphicsLayer = new GraphicsLayer({ title: 'Temp Edit Layer' });
+      this.map.add(this.tempGraphicsLayer);
+      this.userLayers.push(this.tempGraphicsLayer);
+    }
+
+    // convert selected feature to a Graphic and place in temp layer
+    try { this.tempGraphicsLayer.removeAll(); } catch (_) {}
+    const geometry = feature.geometry ?? (feature.getGeometry ? feature.getGeometry() : null);
+    const graphic = new Graphic({ geometry, attributes: feature.attributes ?? {} });
+    this.tempGraphicsLayer.add(graphic);
+
+    this.activeSketch = new Sketch({ layer: this.tempGraphicsLayer, view: this.view });
+    this.view.ui.add(this.activeSketch, 'top-right');
+
+    // wire sketch events to persist edits when user finishes a create/update
+    try {
+      this.activeSketch.on('create', (evt: any) => {
+        if (evt.state === 'complete') {
+          const g = evt.graphic ?? (evt.graphics && evt.graphics[0]);
+          if (!g) return;
+          const geom = g.geometry && g.geometry.toJSON ? g.geometry.toJSON() : g.geometry;
+          if (this.editingLayerId) {
+            const updates: any = [{ attributes: { objectId: this.editingFeatureId }, geometry: geom }];
+            this.layerService.applyEditsProxy(this.editingLayerId, { updates }).subscribe({ next: () => { this.layerService.emitToast('Edit saved'); }, error: (err: any) => { console.error('Apply edits failed', err); this.layerService.emitToast('Save failed'); } });
+          }
+        }
+      });
+
+      this.activeSketch.on('update', (evt: any) => {
+        if (evt.state === 'complete') {
+          const g = evt.graphics && evt.graphics[0];
+          if (!g) return;
+          const geom = g.geometry && g.geometry.toJSON ? g.geometry.toJSON() : g.geometry;
+          if (this.editingLayerId) {
+            const updates: any = [{ attributes: { objectId: this.editingFeatureId }, geometry: geom }];
+            this.layerService.applyEditsProxy(this.editingLayerId, { updates }).subscribe({ next: () => { this.layerService.emitToast('Edit saved'); }, error: (err: any) => { console.error('Apply edits failed', err); this.layerService.emitToast('Save failed'); } });
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to attach sketch event handlers', e);
+    }
+  } catch (e) {
+    console.warn('Could not enable sketch editor', e);
+  }
+}
+
+disableActiveEditing() {
+  try {
+    if (this.activeEditor) {
+      try { this.view.ui.remove(this.activeEditor); } catch (_) {}
+      this.activeEditor = null;
+    }
+  } catch (_) {}
+
+  try {
+    if (this.activeSketch) {
+      try { this.view.ui.remove(this.activeSketch); } catch (_) {}
+      this.activeSketch = null;
+    }
+  } catch (_) {}
+
+  try {
+    if (this.tempGraphicsLayer) {
+      try { this.map.remove(this.tempGraphicsLayer); } catch (_) {}
+      // remove from userLayers if present
+      this.userLayers = this.userLayers.filter(l => l !== this.tempGraphicsLayer);
+      this.tempGraphicsLayer = null;
+    }
+  } catch (_) {}
+}
+
 openEditPanel(attributes: any, backendLayerId: string | null) {
   this.editingFeatureId = attributes._db_id ?? attributes.OBJECTID ?? attributes.objectId ?? null;
   this.editingLayerId = backendLayerId;
@@ -593,6 +696,8 @@ saveFeature() {
       this.isSaving = false;
       this.saveSuccess = true;
       this.layerService.emitToast('Feature saved successfully!');
+      // cleanup active editing UI
+      this.disableActiveEditing();
       setTimeout(() => {
         this.saveSuccess = false;
         this.showEditPanel = false;
@@ -621,6 +726,8 @@ cancelEdit() {
     try { this.highlightHandle.remove(); } catch (_) {}
     this.highlightHandle = null;
   }
+  // also remove any editor/sketch UI we created
+  try { this.disableActiveEditing(); } catch (_) {}
 }
 
   async toggleForestDensity(enabled: boolean) {

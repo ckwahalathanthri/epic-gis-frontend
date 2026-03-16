@@ -90,17 +90,22 @@ export class LayerService {
     
     // Check if it's an update
     if (edits.updates && edits.updates.length > 0) {
-        const update = edits.updates[0];
-        const attributes = update.attributes;
-        const id = attributes.objectId || attributes.id || attributes.OBJECTID;
-        
-        // Map to our FeatureUpdateDTO
-        const dto = {
-            id: id,
-            properties: attributes
-            // geometry: ... (ArcGIS editor might send separate geometry)
-        };
-        return this.updateFeature(layerId, dto.id, dto.properties, undefined);
+      const update = edits.updates[0];
+      const attributes = update.attributes || {};
+      const id = attributes.objectId || attributes.id || attributes.OBJECTID;
+
+      // Map to our FeatureUpdateDTO
+      const dto: any = {
+        id: id,
+        properties: attributes
+      };
+
+      // If geometry was provided (could be GeoJSON or Esri JSON), forward it
+      if (update.geometry) {
+        dto.geometry = update.geometry;
+      }
+
+      return this.updateFeature(layerId, dto.id, dto.properties, dto.geometry);
     }
     
     return of({ success: false, message: 'Operation not supported yet' });
