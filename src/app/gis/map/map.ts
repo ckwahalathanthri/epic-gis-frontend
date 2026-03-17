@@ -322,9 +322,11 @@ private createMapView(): void {
     if (!this.editingFeatureId || !this.editingLayerId || this.isSaving) return;
     this.isSaving = true;
 
+    // Collect updated properties
     const properties: Record<string, string> = {};
     this.editProperties.forEach(p => { properties[p.key] = p.value; });
 
+    // Collect updated geometry if modified using the Sketch widget
     const geojsonGeometry = this.editingGraphic?.geometry
       ? this.convertToGeoJson(this.editingGraphic.geometry)
       : null;
@@ -335,18 +337,30 @@ private createMapView(): void {
       .updateFeature(currentLayerId, this.editingFeatureId, properties, geojsonGeometry)
       .subscribe({
         next: () => {
-          this.saveSuccess = true;
-          this.layerService.emitToast('Feature saved successfully!');
-          this.cancelEdit();
-          this.refreshSingleGeoJsonLayer(currentLayerId);
+          this.ngZone.run(() => {
+            this.saveSuccess = true;
+            this.layerService.emitToast('Edited completed'); // Show the success toast
+            
+            this.cancelEdit(); // Hide the panel and clean up graphics
+            this.refreshSingleGeoJsonLayer(currentLayerId); // Fetch and refresh the map
+            
+            // Brute force UI changes to close the editing component instantly
+            this.cdr.detectChanges(); 
+          });
         },
         error: (err: any) => {
-          console.error('Save failed', err);
-          this.layerService.emitToast('Save failed. Please try again.');
-          this.isSaving = false;
+          this.ngZone.run(() => {
+            console.error('Save failed', err);
+            this.layerService.emitToast('Save failed. Please try again.');
+            this.isSaving = false;
+            
+            this.cdr.detectChanges();
+          });
         }
       });
   }
+
+
 
   cancelEdit(): void {
     this.showEditPanel    = false;
@@ -415,12 +429,21 @@ closeFeaturePopup(): void {
 
     this.layerService.getLayerGeoJson(backendLayerId).subscribe({
       next: (geoJson: any) => {
+        // Create new blob with the updated data
         const blob   = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
         const newUrl = URL.createObjectURL(blob);
+        
         if (targetLayer._blobUrl) URL.revokeObjectURL(targetLayer._blobUrl);
+        
+        // Update layer's internal tracking
         targetLayer._geoJsonData = geoJson;
         targetLayer._blobUrl     = newUrl;
         targetLayer.url          = newUrl;
+        
+        // Force the ArcGIS map engine to clear the cache and instantly redraw this layer
+        if (typeof targetLayer.refresh === 'function') {
+          targetLayer.refresh();
+        }
       },
       error: (err: any) => console.error('Failed to refresh GeoJSON layer', err)
     });
