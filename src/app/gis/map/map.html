@@ -1,70 +1,114 @@
-<!-- Slide-in Edit Panel (left side) -->
-<div class="edit-panel" [class.open]="showEditPanel">
-  <div class="edit-panel-header">
-    <span class="edit-panel-title">✏️ Edit Feature</span>
-    <button class="edit-panel-close" (click)="cancelEdit()">✕</button>
+<div class="map-wrapper">
+
+  <!-- ── Slide-in Edit Panel ─────────────────────────────────────────── -->
+  <div class="edit-panel" [class.open]="showEditPanel">
+
+    <div class="edit-panel-header">
+      <div class="edit-panel-header-left">
+        <span class="edit-panel-icon">✏️</span>
+        <span class="edit-panel-title">Edit Feature</span>
+      </div>
+      <button class="icon-btn" (click)="cancelEdit()" title="Close">✕</button>
+    </div>
+
+    <div class="edit-panel-body">
+      <ng-container *ngIf="editProperties.length > 0; else emptyProps">
+        <div class="edit-field" *ngFor="let prop of editProperties">
+          <label class="edit-label">{{ prop.key }}</label>
+          <input class="edit-input" type="text" [(ngModel)]="prop.value" />
+        </div>
+      </ng-container>
+      <ng-template #emptyProps>
+        <div class="edit-empty">No editable properties found.</div>
+      </ng-template>
+    </div>
+
+    <div class="edit-panel-footer">
+      <div *ngIf="saveSuccess" class="save-success-msg">✅ Saved successfully!</div>
+      <button class="btn-primary" (click)="saveFeature()" [disabled]="isSaving || saveSuccess">
+        <span *ngIf="isSaving">⏳ Saving…</span>
+        <span *ngIf="!isSaving && !saveSuccess">💾 Save Changes</span>
+        <span *ngIf="!isSaving && saveSuccess">✅ Saved</span>
+      </button>
+      <button class="btn-secondary" (click)="cancelEdit()">Cancel</button>
+    </div>
+
   </div>
 
-  <div class="edit-panel-body">
-    <div class="edit-field" *ngFor="let prop of editProperties">
-      <label class="edit-label">{{ prop.key }}</label>
-      <input class="edit-input" type="text" [(ngModel)]="prop.value" />
+  <!-- ── Feature Info Popup ──────────────────────────────────────────── -->
+  <div *ngIf="showFeaturePopup" class="feature-popup">
+
+    <div class="feature-popup-header">
+      <span class="feature-popup-title">{{ popupFeatureName }}</span>
+      <button class="icon-btn" (click)="closeFeaturePopup()" title="Close">×</button>
     </div>
-    <div *ngIf="editProperties.length === 0" class="edit-empty">
-      No editable properties found.
+
+    <div class="feature-popup-body">
+      <table class="attr-table">
+        <tr *ngFor="let attr of popupAttributes">
+          <td class="attr-key">{{ attr.key }}</td>
+          <td class="attr-val">{{ attr.value }}</td>
+        </tr>
+      </table>
     </div>
+
+    <div class="feature-popup-footer">
+      <button class="btn-primary" (click)="openEditFromPopup()">
+        ✏️ Edit Feature
+      </button>
+    </div>
+
   </div>
 
-  <div class="edit-panel-footer">
-    <div *ngIf="saveSuccess" class="save-success-msg">✅ Saved!</div>
-    <button class="btn-save" (click)="saveFeature()" [disabled]="isSaving || saveSuccess">
-      <span *ngIf="isSaving">⏳ Saving…</span>
-      <span *ngIf="!isSaving && !saveSuccess">💾 Save Changes</span>
-      <span *ngIf="saveSuccess">✅ Saved</span>
-    </button>
-    <button class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+  <!-- ── Floating Toolbar ────────────────────────────────────────────── -->
+  <div class="toolbar">
+
+    <div class="toolbar-brand">
+      <span>🗺️</span>
+      <span>GIS Studio</span>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-section">
+      <label class="toolbar-btn upload-btn" title="Upload Shapefile / GeoJSON / KML">
+        <span class="btn-icon">📁</span>
+        <span>Upload Layer</span>
+        <input type="file" (change)="uploadFile($event)" accept=".zip,.kml,.kmz,.json,.geojson" />
+      </label>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-section">
+      <button class="toolbar-btn" [class.btn-3d-active]="is3DMode" (click)="toggle3D()">
+        <span class="btn-icon">{{ is3DMode ? '🗺️' : '🌐' }}</span>
+        <span>{{ is3DMode ? 'Switch to 2D' : 'Switch to 3D' }}</span>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-section">
+      <button class="toolbar-btn" (click)="addFeatureLayer()">
+        <span class="btn-icon">＋</span>
+        <span>Add Web Layer</span>
+      </button>
+      <button class="toolbar-btn" (click)="addKMLLayer()">
+        <span class="btn-icon">📌</span>
+        <span>Add KML URL</span>
+      </button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <p class="toolbar-hint">Click a feature on the map to view and edit its properties.</p>
+
   </div>
+
+  <!-- ── Map Container ───────────────────────────────────────────────── -->
+  <div id="mapViewDiv" class="map-view"></div>
+
 </div>
 
-<!-- Floating Toolbar -->
-<div class="toolbar">
-  <div class="toolbar-brand">🗺️ GIS Studio</div>
 
-  <div class="toolbar-section">
-    <label class="toolbar-btn upload-btn" title="Upload Shapefile / GeoJSON / KML">
-      <span class="btn-icon">📁</span>
-      <span class="btn-text">Upload Layer</span>
-      <input type="file" (change)="uploadFile($event)" accept=".zip,.kml,.kmz,.json,.geojson"/>
-    </label>
-  </div>
-
-  <div class="toolbar-divider"></div>
-
-  <div class="toolbar-section">
-    <button class="toolbar-btn" [class.btn-3d-active]="is3DMode" (click)="toggle3D()">
-      <span class="btn-icon">{{ is3DMode ? '🗺️' : '🌐' }}</span>
-      <span class="btn-text">{{ is3DMode ? 'Switch to 2D' : 'Switch to 3D' }}</span>
-    </button>
-  </div>
-
-  <div class="toolbar-divider"></div>
-
-  <div class="toolbar-section">
-    <button class="toolbar-btn" (click)="addFeatureLayer()">
-      <span class="btn-icon">＋</span>
-      <span class="btn-text">Add Web Layer</span>
-    </button>
-    <button class="toolbar-btn" (click)="addKMLLayer()">
-      <span class="btn-icon">📌</span>
-      <span class="btn-text">Add KML URL</span>
-    </button>
-  </div>
-
-  <div class="toolbar-divider"></div>
-
-  <div class="toolbar-section toolbar-hint">
-    Click a feature on the map to edit its properties.
-  </div>
-</div>
-
-<div id="mapViewDiv" class="map-view"></div>
