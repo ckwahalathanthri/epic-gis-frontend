@@ -9,12 +9,13 @@ import { MapCoreService } from '../../services/map-core.service';
 import { MapToolbarComponent } from '../../components/map-toolbar/map-toolbar.component';
 import { MapPopupComponent } from '../../components/map-popup/map-popup.component';
 import { MapEditPanelComponent } from '../../components/map-edit-panel/map-edit-panel.component';
+import { MapLoadingComponent } from '../../components/map-loading/map-loading';
 import Graphic from '@arcgis/core/Graphic';
 
 @Component({
   selector: 'app-map',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, FormsModule, MapToolbarComponent, MapPopupComponent, MapEditPanelComponent],
+  imports: [CommonModule, HttpClientModule, FormsModule, MapToolbarComponent, MapPopupComponent, MapEditPanelComponent, MapLoadingComponent],
   templateUrl: './map.html',
   styleUrls: ['./map.css'],
   encapsulation: ViewEncapsulation.None

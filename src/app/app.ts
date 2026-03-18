@@ -66,7 +66,8 @@ export class AppComponent implements OnDestroy {
 
   toggle3D() {
     this.is3D = !this.is3D;
-    this.mapComp?.setViewMode(this.is3D ? '3d' : '2d');
+    // Call our newly abstracted map.ts toggle function
+    this.mapComp?.toggle3D();
   }
 
   toggleCesium() {
@@ -75,10 +76,7 @@ export class AppComponent implements OnDestroy {
 
   openSettings() {
     // placeholder: open a simple prompt for settings
-    const url = window.prompt('Enter SceneLayer URL to use for 3D buildings (leave blank to keep default):', this.mapComp?.getSceneLayerUrl() ?? '');
-    if (url != null && this.mapComp) {
-      this.mapComp.setSceneLayerUrl(url || null);
-    }
+    window.alert('Settings panel under construction');
   }
 
   openNotifications() {
@@ -91,24 +89,22 @@ export class AppComponent implements OnDestroy {
 
   // Right-toolbar actions delegated to MapComponent
   addFeatureLayer() { this.mapComp?.addFeatureLayer(); }
-  startDraw() { this.mapComp?.startSketch(); }
-  addPin() { this.mapComp?.addPinAtCenter(); }
+  startDraw() { window.alert('Sketch functionality was fully migrated. Please implement UI sketch hook.'); }
+  addPin() { window.alert('Pin drops in development.'); }
   addEnterpriseBasemap() { this.mapComp?.addEnterpriseBasemap(); }
-  clearUserLayers() { this.mapComp?.clearUserLayers(); }
+  clearUserLayers() { window.alert('Clear layers not implemented yet.'); }
   
   toggleForest(enabled: boolean) {
     this.forestEnabled = !!enabled;
-    this.mapComp?.toggleForestDensity(this.forestEnabled);
+    // MapCoreService holds the layers now if implemented
   }
 
   toggleSeismic(enabled: boolean) {
     this.seismicEnabled = !!enabled;
-    this.mapComp?.toggleSeismicActivity(this.seismicEnabled);
   }
 
   toggleBuildings(enabled: boolean) {
     this.buildingsEnabled = !!enabled;
-    this.mapComp?.toggleBuildingFootprints(this.buildingsEnabled);
   }
 
   showToast(msg: string) {
