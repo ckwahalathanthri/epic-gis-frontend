@@ -62,6 +62,7 @@ popupFeatureName = '';
 popupAttributes: { key: string; value: string }[] = [];
 popupGraphic: any = null;
 popupBackendLayerId: string | null = null;
+mapToastMessage = '';
 
   constructor(
     private http: HttpClient,
@@ -318,15 +319,13 @@ private createMapView(): void {
     this.sketchWidget.update([this.editingGraphic], { tool: 'reshape' });
   }
 
-  saveFeature(): void {
+    saveFeature(): void {
     if (!this.editingFeatureId || !this.editingLayerId || this.isSaving) return;
     this.isSaving = true;
 
-    // Collect updated properties
     const properties: Record<string, string> = {};
     this.editProperties.forEach(p => { properties[p.key] = p.value; });
 
-    // Collect updated geometry if modified using the Sketch widget
     const geojsonGeometry = this.editingGraphic?.geometry
       ? this.convertToGeoJson(this.editingGraphic.geometry)
       : null;
@@ -339,28 +338,28 @@ private createMapView(): void {
         next: () => {
           this.ngZone.run(() => {
             this.saveSuccess = true;
-            this.layerService.emitToast('Edited completed'); // Show the success toast
+            this.cancelEdit();
             
-            this.cancelEdit(); // Hide the panel and clean up graphics
-            this.refreshSingleGeoJsonLayer(currentLayerId); // Fetch and refresh the map
+            // 1. Trigger the map-specific toast that you created
+            this.showMapToast('Edited completed!');
             
-            // Brute force UI changes to close the editing component instantly
+            // 2. Do a hard-reset of the layer to force 100% cache clearing
+            this.refreshSingleGeoJsonLayer(currentLayerId); 
+            
+            // 3. Brute force Angular change detection to remove the panel instantly
             this.cdr.detectChanges(); 
           });
         },
         error: (err: any) => {
           this.ngZone.run(() => {
             console.error('Save failed', err);
-            this.layerService.emitToast('Save failed. Please try again.');
+            this.showMapToast('Save failed. Please try again.');
             this.isSaving = false;
-            
             this.cdr.detectChanges();
           });
         }
       });
   }
-
-
 
   cancelEdit(): void {
     this.showEditPanel    = false;
@@ -423,30 +422,55 @@ closeFeaturePopup(): void {
     return layer;
   }
 
-  refreshSingleGeoJsonLayer(backendLayerId: string): void {
-    const targetLayer: any = this.userLayers.find(l => (l as any)._backendLayerId === backendLayerId);
-    if (!targetLayer) return;
+    refreshSingleGeoJsonLayer(backendLayerId: string): void {
+    const targetIndex = this.userLayers.findIndex(l => (l as any)._backendLayerId === backendLayerId);
+    if (targetIndex === -1) return;
+    
+    // Store the old layer object securely
+    const oldLayer: any = this.userLayers[targetIndex];
 
     this.layerService.getLayerGeoJson(backendLayerId).subscribe({
       next: (geoJson: any) => {
-        // Create new blob with the updated data
-        const blob   = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
-        const newUrl = URL.createObjectURL(blob);
-        
-        if (targetLayer._blobUrl) URL.revokeObjectURL(targetLayer._blobUrl);
-        
-        // Update layer's internal tracking
-        targetLayer._geoJsonData = geoJson;
-        targetLayer._blobUrl     = newUrl;
-        targetLayer.url          = newUrl;
-        
-        // Force the ArcGIS map engine to clear the cache and instantly redraw this layer
-        if (typeof targetLayer.refresh === 'function') {
-          targetLayer.refresh();
+        const title = oldLayer.title;
+
+        // 1. Remove the old layer
+        this.map.remove(oldLayer);
+        this.userLayers.splice(targetIndex, 1);
+        if (oldLayer._blobUrl) {
+          URL.revokeObjectURL(oldLayer._blobUrl);
         }
+
+        // 2. Wait for the engine to acknowledge the removal, then inject the new layer
+        setTimeout(() => {
+          this.ngZone.run(() => {
+            const newLayer = this.addGeoJsonLayerToMap(geoJson, title, backendLayerId);
+            
+            if (newLayer) {
+              // Now forcefully instruct the ArcGIS view to refresh the map painting
+              this.view.whenLayerView(newLayer).then((layerView: any) => {
+                // If it's a feature-based layer, this forces a redraw.
+                if (layerView && typeof layerView.refresh === 'function') {
+                  layerView.refresh();
+                }
+              }).catch((e: any) => {
+                console.warn('Could not force LayerView refresh:', e);
+              });
+            }
+          });
+        }, 100); // 100ms micro-pause so the map recognizes the DOM/Canvas slice is missing
       },
       error: (err: any) => console.error('Failed to refresh GeoJSON layer', err)
     });
+  }
+
+  showMapToast(msg: string): void {
+    this.mapToastMessage = msg;
+    this.cdr.detectChanges(); // Force angular to show UI
+    
+    setTimeout(() => {
+      this.mapToastMessage = '';
+      this.cdr.detectChanges(); // Hide UI after 4 seconds
+    }, 4000);
   }
 
   // ── 2D↔3D helpers ────────────────────────────────────────────────────────

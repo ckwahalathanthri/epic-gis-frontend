@@ -1,6 +1,0 @@
-.attributes-table-inner { color: #eaf6ff; }
-.attributes-table-inner table { width: 100%; border-collapse: collapse; }
-.attributes-table-inner th { text-align:left; padding:8px; color:#bfe6ff }
-.attributes-table-inner td { padding:8px; border-top:1px solid rgba(255,255,255,0.03) }
-.attributes-table-inner button { margin-right:6px; padding:6px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:#fff; border:none; cursor:pointer }
-.attributes-table-inner button:hover { background:rgba(255,255,255,0.12) }
