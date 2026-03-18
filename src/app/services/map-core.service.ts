@@ -162,7 +162,7 @@ export class MapCoreService {
 
   // ── URL & External Layers ──────────────────────────────────────
 
-  addFeatureLayerFromUrl(url: string, callback?: (feats: any[]) => void): void {
+  addFeatureLayerFromUrl(url: string, callback?: (feats: any[]) => void): FeatureLayer {
     const layer = new FeatureLayer({ url, outFields: ['*'] });
     this.map.add(layer);
     this.userLayers.push(layer);
@@ -172,6 +172,8 @@ export class MapCoreService {
         if (callback) callback(feats);
       })
       .catch((err: any) => console.warn('queryFeatures failed', err));
+      
+    return layer; // RETURN THE LAYER
   }
 
   addKML(url: string): void {
@@ -291,9 +293,14 @@ export class MapCoreService {
     }
   }
 
-    addGeoJsonLayerFromUrl(url: string, title: string): void {
-    const layer = new GeoJSONLayer({ url, title });
+      addGeoJsonLayerFromUrl(url: string, title?: string): GeoJSONLayer {
+    const layer = new GeoJSONLayer({
+      url: url,
+      title: title ?? 'GeoJSON Layer',
+      outFields: ['*']
+    });
     this.map.add(layer);
     this.userLayers.push(layer);
+    return layer;
   }
 }

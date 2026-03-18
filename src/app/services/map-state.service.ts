@@ -7,6 +7,10 @@ export class MapStateService {
   // --- View State ---
   readonly is3DMode = signal<boolean>(false);
 
+  // Add Loading States
+  isLoading = signal<boolean>(false);
+  loadingMessage = signal<string>('');
+
   // --- Popup State ---
   readonly showFeaturePopup = signal<boolean>(false);
   readonly popupFeatureName = signal<string>('');
@@ -64,5 +68,15 @@ export class MapStateService {
 
   setSaveSuccess(success: boolean) {
     this.saveSuccess.set(success);
+  }
+
+  startLoading(message: string = 'Loading...') {
+    this.loadingMessage.set(message);
+    this.isLoading.set(true);
+  }
+
+  stopLoading() {
+    this.isLoading.set(false);
+    this.loadingMessage.set('');
   }
 }
