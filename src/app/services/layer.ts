@@ -45,6 +45,7 @@ export class LayerService {
 
   // Emits a toast message
   emitToast(msg: string) {
+    console.log('[LayerService] emitToast called with:', msg);
     this.toast$.next(msg);
   }
 
