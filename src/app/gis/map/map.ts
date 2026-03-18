@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy,NgZone, ChangeDetectorRef  } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, ChangeDetectorRef, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { LayerService } from '../../services/layer';
@@ -22,7 +22,6 @@ import Sketch from '@arcgis/core/widgets/Sketch';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 
 declare const window: any;
-declare const console: any;
 
 @Component({
   selector: 'app-map',
@@ -30,7 +29,7 @@ declare const console: any;
   imports: [CommonModule, HttpClientModule, FormsModule],
   templateUrl: './map.html',
   styleUrls: ['./map.css'],
-
+  encapsulation: ViewEncapsulation.None   // ← required so .map-wrapper CSS applies
 })
 export class MapComponent implements OnInit, OnDestroy {
   private map!: Map;
@@ -49,19 +48,19 @@ export class MapComponent implements OnInit, OnDestroy {
   private popupActionHandle: any = null;
   private popupHandlerAbortFlag = { cancelled: false };
 
-  is3DMode = false;
-  showEditPanel = false;
+  is3DMode            = false;
+  showEditPanel       = false;
   editProperties: { key: string; value: string }[] = [];
   editingFeatureId: number | null = null;
-  editingLayerId: string | null = null;
-  isSaving = false;
-  saveSuccess = false;
-  editingGraphic: Graphic | null = null;
-  showFeaturePopup = false;
-popupFeatureName = '';
-popupAttributes: { key: string; value: string }[] = [];
-popupGraphic: any = null;
-popupBackendLayerId: string | null = null;
+  editingLayerId: string | null   = null;
+  isSaving            = false;
+  saveSuccess         = false;
+  editingGraphic: Graphic | null  = null;
+  showFeaturePopup    = false;
+  popupFeatureName    = '';
+  popupAttributes: { key: string; value: string }[] = [];
+  popupGraphic: any   = null;
+  popupBackendLayerId: string | null = null;
 
   constructor(
     private http: HttpClient,
@@ -71,27 +70,27 @@ popupBackendLayerId: string | null = null;
     private cdr: ChangeDetectorRef
   ) {}
 
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
   ngOnInit(): void {
-  esriConfig.assetsPath = '/assets';
-  this.map = new Map({ basemap: 'streets-navigation-vector' });
-  this.createMapView();
-  // DO NOT call addDefaultWidgets() here — createMapView().when() handles it
+    esriConfig.assetsPath = '/assets';
+    this.map = new Map({ basemap: 'streets-navigation-vector' });
+    this.createMapView();
 
-  this.layerService.layerAdded$.subscribe({
-    next: (url: string) => {
-      try { this.addFeatureLayerFromUrl(url); }
-      catch {
-        try {
-          const k = new KMLLayer({ url });
-          this.map.add(k);
-          this.userLayers.push(k);
-        } catch (err) { console.error('Failed to add uploaded layer', err); }
+    this.layerService.layerAdded$.subscribe({
+      next: (url: string) => {
+        try { this.addFeatureLayerFromUrl(url); }
+        catch {
+          try {
+            const k = new KMLLayer({ url });
+            this.map.add(k);
+            this.userLayers.push(k);
+          } catch (err) { console.error('Failed to add uploaded layer', err); }
+        }
       }
-    }
-  });
+    });
 
-  this.loadBackendLayers();
-
+    this.loadBackendLayers();
   }
 
   ngOnDestroy(): void {
@@ -101,21 +100,19 @@ popupBackendLayerId: string | null = null;
 
   // ── View ──────────────────────────────────────────────────────────────────
 
-private createMapView(): void {
-  this.mapView = new MapView({
-    container: 'mapViewDiv',
-    map: this.map,
-    center: [80.7, 7.8],
-    zoom: 7
-  });
-  this.view = this.mapView;
-
-  // Everything that touches the view must be inside .when()
-  this.mapView.when(() => {
-    this.addDefaultWidgets();   // ← moved inside when()
-    this.setupPopupHandler();
-  });
-}
+  private createMapView(): void {
+    this.mapView = new MapView({
+      container: 'mapViewDiv',
+      map: this.map,
+      center: [80.7, 7.8],
+      zoom: 7
+    });
+    this.view = this.mapView;
+    this.mapView.when(() => {
+      this.addDefaultWidgets();
+      this.setupPopupHandler();
+    });
+  }
 
   toggle3D(): void {
     this.is3DMode = !this.is3DMode;
@@ -123,48 +120,43 @@ private createMapView(): void {
   }
 
   async setViewMode(mode: '2d' | '3d'): Promise<void> {
-  const is3d = mode === '3d';
-  if (is3d && this.view?.type === '3d') return;
-  if (!is3d && this.view?.type === '2d') return;
+    const is3d = mode === '3d';
+    if (is3d && this.view?.type === '3d') return;
+    if (!is3d && this.view?.type === '2d') return;
 
-  this.detachHandlers();
+    this.detachHandlers();
 
-  let currentViewpoint: any = null;
-  if (this.view?.viewpoint) currentViewpoint = this.view.viewpoint.clone();
-  if (this.view) this.view.container = null;
+    let currentViewpoint: any = null;
+    if (this.view?.viewpoint) currentViewpoint = this.view.viewpoint.clone();
+    if (this.view) this.view.container = null;
 
-  const layerSnapshots = this.snapshotAndRemoveGeoJsonLayers();
-  
-  if (is3d) {
-    if (!this.sceneView) {
-      this.sceneView = new SceneView({
-        container: 'mapViewDiv',
-        map: this.map,
-        viewingMode: 'global'
-      });
-      if (!this.sceneLayer && this.sceneLayerUrl) this.addSceneLayer(this.sceneLayerUrl);
+    const layerSnapshots = this.snapshotAndRemoveGeoJsonLayers();
+
+    if (is3d) {
+      if (!this.sceneView) {
+        this.sceneView = new SceneView({ container: 'mapViewDiv', map: this.map, viewingMode: 'global' });
+        if (!this.sceneLayer && this.sceneLayerUrl) this.addSceneLayer(this.sceneLayerUrl);
+      } else {
+        this.sceneView.container = document.getElementById('mapViewDiv') as any;
+      }
+      this.view = this.sceneView;
     } else {
-      this.sceneView.container = document.getElementById('mapViewDiv') as any;
+      if (!this.mapView) {
+        this.createMapView();
+        return;
+      } else {
+        this.mapView.container = document.getElementById('mapViewDiv') as any;
+      }
+      this.view = this.mapView;
     }
-    this.view = this.sceneView;
-  } else {
-    if (!this.mapView) {
-      this.createMapView();
-      return; 
-    } else {
-      this.mapView.container = document.getElementById('mapViewDiv') as any;
-    }
-    this.view = this.mapView;
+
+    this.view.when(() => {
+      this.addDefaultWidgets();
+      this.restoreGeoJsonLayers(layerSnapshots, is3d);
+      this.setupPopupHandler();
+      this.restoreViewpoint(currentViewpoint, is3d);
+    });
   }
-
-
-  this.view.when(() => {
-    this.addDefaultWidgets();    
-    this.restoreGeoJsonLayers(layerSnapshots, is3d);
-    this.setupPopupHandler();
-    this.restoreViewpoint(currentViewpoint, is3d);
-  });
-}
 
   private addDefaultWidgets(): void {
     try {
@@ -172,98 +164,70 @@ private createMapView(): void {
     } catch (e) { console.warn('Failed to add widgets', e); }
   }
 
-  // ── Popup ─────────────────────────────────────────────────────────────────
+  // ── Popup handler ─────────────────────────────────────────────────────────
 
- private setupPopupHandler(): void {
-  if (!this.view) return;
-  this.detachHandlers();
+  private setupPopupHandler(): void {
+    if (!this.view) return;
+    this.detachHandlers();
 
-  this.popupHandlerAbortFlag.cancelled = true;
-  const abortFlag = { cancelled: false };
-  this.popupHandlerAbortFlag = abortFlag;
+    this.popupHandlerAbortFlag.cancelled = true;
+    const abortFlag = { cancelled: false };
+    this.popupHandlerAbortFlag = abortFlag;
 
-  const currentView = this.view;
+    const currentView = this.view;
 
-  this.clickHandle = currentView.on('click', (event: any) => {
-    const testLayers = this.userLayers.filter(
-      (l: any) => l.type === 'geojson' || l.type === 'feature'
-    );
-    if (!testLayers.length) return;
+    this.clickHandle = currentView.on('click', (event: any) => {
+      const testLayers = this.userLayers.filter(
+        (l: any) => l.type === 'geojson' || l.type === 'feature'
+      );
+      if (!testLayers.length) return;
 
-    currentView.hitTest(event, { include: testLayers })
-      .then((response: any) => {
-        const hit = (response.results ?? []).find((r: any) => r.type === 'graphic');
+      currentView.hitTest(event, { include: testLayers })
+        .then((response: any) => {
+          const hit = (response.results ?? []).find((r: any) => r.type === 'graphic');
 
-        if (!hit) {
-          this.ngZone.run(() => { this.showFeaturePopup = false; });
-          return;
-        }
+          if (!hit) {
+            this.ngZone.run(() => {
+              this.showFeaturePopup = false;
+              this.cdr.detectChanges();
+            });
+            return;
+          }
 
-        const graphic: any   = hit.graphic;
-        const attrs          = graphic.attributes ?? {};
-        const owningLayer    = graphic.layer;
-        const backendLayerId = (owningLayer as any)?._backendLayerId ?? null;
-        const featureName    = attrs.name || attrs.NAME || owningLayer?.title || 'Feature';
+          const graphic: any   = hit.graphic;
+          const attrs          = graphic.attributes ?? {};
+          const owningLayer    = graphic.layer;
+          const backendLayerId = (owningLayer as any)?._backendLayerId ?? null;
+          const featureName    = attrs.name || attrs.NAME || owningLayer?.title || 'Feature';
 
-        this.ngZone.run(() => {
-          this.popupFeatureName    = featureName;
-          this.popupBackendLayerId = backendLayerId;
-          this.popupGraphic        = graphic;
-          this.popupAttributes     = Object.entries(attrs)
-            .filter(([key]) =>
-              !key.startsWith('F_') &&
-              !key.startsWith('_') &&
-              key !== 'OBJECTID' &&
-              key !== 'ObjectID'
-            )
-            .map(([key, value]) => ({ key, value: String(value ?? '') }));
-          this.showFeaturePopup = true;
-          this.cdr.detectChanges();
-          console.log('popup shown for:', featureName);
+          this.ngZone.run(() => {
+            this.popupFeatureName    = featureName;
+            this.popupBackendLayerId = backendLayerId;
+            this.popupGraphic        = graphic;
+            this.popupAttributes     = Object.entries(attrs)
+              .filter(([key]) =>
+                !key.startsWith('F_') &&
+                !key.startsWith('_') &&
+                key !== 'OBJECTID' &&
+                key !== 'ObjectID'
+              )
+              .map(([key, value]) => ({ key, value: String(value ?? '') }));
+            this.showFeaturePopup = true;
+            this.cdr.detectChanges();
+          });
+        })
+        .catch((err: any) => {
+          if (err?.name !== 'AbortError') console.warn('hitTest error:', err);
         });
-      })
-      .catch((err: any) => {
-        if (err?.name !== 'AbortError') console.warn('hitTest error:', err);
-      });
-  });
-}
+    });
+  }
 
   private detachHandlers(): void {
-  this.clickHandle?.remove();
-  this.clickHandle = null;
-  this.popupActionHandle?.remove();
-  this.popupActionHandle = null;
-}
-
-  private buildPopupContent(attributes: any): HTMLElement {
-  const container = document.createElement('div');
-  container.style.cssText = 'padding:4px 0;max-height:300px;overflow-y:auto';
-
-  const table = document.createElement('table');
-  table.style.cssText = 'border-collapse:collapse;width:100%;font-size:13px';
-
-  Object.entries(attributes)
-    .filter(([key]) =>
-      !key.startsWith('F_') &&
-      !key.startsWith('_') &&
-      key !== 'OBJECTID' &&
-      key !== 'ObjectID'
-    )
-    .forEach(([key, value]) => {
-      const row = table.insertRow();
-
-      const keyCell = row.insertCell();
-      keyCell.style.cssText = 'padding:5px 12px 5px 0;font-weight:600;color:#aaa;white-space:nowrap;vertical-align:top;font-size:12px';
-      keyCell.textContent = key;
-
-      const valCell = row.insertCell();
-      valCell.style.cssText = 'padding:5px 0;word-break:break-word';
-      valCell.textContent = String(value ?? '');
-    });
-
-  container.appendChild(table);
-  return container;
-}
+    this.clickHandle?.remove();
+    this.clickHandle = null;
+    this.popupActionHandle?.remove();
+    this.popupActionHandle = null;
+  }
 
   // ── Edit panel ────────────────────────────────────────────────────────────
 
@@ -286,7 +250,7 @@ private createMapView(): void {
     this.saveSuccess   = false;
 
     this.startGeometryEdit(feature);
-    try { this.view.popup.close(); } catch { }
+    try { this.view.popup?.close(); } catch { /* ignore */ }
   }
 
   startGeometryEdit(feature: any): void {
@@ -301,13 +265,13 @@ private createMapView(): void {
     if (!this.sketchWidget) {
       this.sketchWidget = new Sketch({
         layer: this.graphicsLayer,
-        view:  this.view,
+        view: this.view,
         creationMode: 'update'
       });
       this.view.ui.add(this.sketchWidget, 'top-right');
     }
 
-    const isPoint  = feature.geometry?.type === 'point';
+    const isPoint = feature.geometry?.type === 'point';
     const symbol: any = isPoint
       ? { type: 'simple-marker', color: [0, 255, 255, 0.8], size: 10, outline: { color: [0, 200, 255, 1], width: 2 } }
       : { type: 'simple-fill',   color: [0, 255, 255, 0.4], outline: { color: [0, 255, 255, 1], width: 2 } };
@@ -319,14 +283,13 @@ private createMapView(): void {
   }
 
   saveFeature(): void {
-    if (!this.editingFeatureId || !this.editingLayerId || this.isSaving) return;
+    console.log('saveFeature called, editingFeatureId:', this.editingFeatureId, 'editingLayerId:', this.editingLayerId, 'isSaving:', this.isSaving);
+  if (!this.editingFeatureId || !this.editingLayerId || this.isSaving) return;
     this.isSaving = true;
 
-    // Collect updated properties
     const properties: Record<string, string> = {};
     this.editProperties.forEach(p => { properties[p.key] = p.value; });
 
-    // Collect updated geometry if modified using the Sketch widget
     const geojsonGeometry = this.editingGraphic?.geometry
       ? this.convertToGeoJson(this.editingGraphic.geometry)
       : null;
@@ -339,28 +302,27 @@ private createMapView(): void {
         next: () => {
           this.ngZone.run(() => {
             this.saveSuccess = true;
-            this.layerService.emitToast('Edited completed'); // Show the success toast
-            
-            this.cancelEdit(); // Hide the panel and clean up graphics
-            this.refreshSingleGeoJsonLayer(currentLayerId); // Fetch and refresh the map
-            
-            // Brute force UI changes to close the editing component instantly
-            this.cdr.detectChanges(); 
+            this.cancelEdit();
+
+            // Toast goes through layerService so AppComponent picks it up
+            this.layerService.emitToast('✅ Feature saved successfully!');
+
+            // Refresh the layer on the map in real time
+            this.refreshSingleGeoJsonLayer(currentLayerId);
+
+            this.cdr.detectChanges();
           });
         },
         error: (err: any) => {
           this.ngZone.run(() => {
             console.error('Save failed', err);
-            this.layerService.emitToast('Save failed. Please try again.');
+            this.layerService.emitToast('❌ Save failed. Please try again.');
             this.isSaving = false;
-            
             this.cdr.detectChanges();
           });
         }
       });
   }
-
-
 
   cancelEdit(): void {
     this.showEditPanel    = false;
@@ -375,14 +337,14 @@ private createMapView(): void {
   }
 
   openEditFromPopup(): void {
-  if (!this.popupGraphic || !this.popupBackendLayerId) return;
-  this.showFeaturePopup = false;
-  this.openEditPanel(this.popupGraphic, this.popupBackendLayerId);
-}
+    if (!this.popupGraphic || !this.popupBackendLayerId) return;
+    this.showFeaturePopup = false;
+    this.openEditPanel(this.popupGraphic, this.popupBackendLayerId);
+  }
 
-closeFeaturePopup(): void {
-  this.showFeaturePopup = false;
-}
+  closeFeaturePopup(): void {
+    this.showFeaturePopup = false;
+  }
 
   // ── Layer helpers ─────────────────────────────────────────────────────────
 
@@ -405,8 +367,7 @@ closeFeaturePopup(): void {
     const blobUrl = URL.createObjectURL(blob);
 
     const layer = new GeoJSONLayer({
-      url:           blobUrl,
-      title,
+      url: blobUrl, title,
       renderer:      this.is3DMode ? renderer3D : renderer2D,
       elevationInfo: { mode: 'on-the-ground' },
       outFields:     ['*']
@@ -423,27 +384,29 @@ closeFeaturePopup(): void {
     return layer;
   }
 
+  /**
+   * Fetches fresh GeoJSON from the backend, removes the stale layer,
+   * and adds a brand-new one — guaranteeing real-time visual update.
+   */
   refreshSingleGeoJsonLayer(backendLayerId: string): void {
-    const targetLayer: any = this.userLayers.find(l => (l as any)._backendLayerId === backendLayerId);
-    if (!targetLayer) return;
+    const targetIndex = this.userLayers.findIndex(l => (l as any)._backendLayerId === backendLayerId);
+    if (targetIndex === -1) return;
+
+    const oldLayer: any = this.userLayers[targetIndex];
+    const title         = oldLayer.title;
 
     this.layerService.getLayerGeoJson(backendLayerId).subscribe({
       next: (geoJson: any) => {
-        // Create new blob with the updated data
-        const blob   = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
-        const newUrl = URL.createObjectURL(blob);
-        
-        if (targetLayer._blobUrl) URL.revokeObjectURL(targetLayer._blobUrl);
-        
-        // Update layer's internal tracking
-        targetLayer._geoJsonData = geoJson;
-        targetLayer._blobUrl     = newUrl;
-        targetLayer.url          = newUrl;
-        
-        // Force the ArcGIS map engine to clear the cache and instantly redraw this layer
-        if (typeof targetLayer.refresh === 'function') {
-          targetLayer.refresh();
-        }
+        this.ngZone.run(() => {
+          // 1. Remove the stale layer completely
+          this.map.remove(oldLayer);
+          this.userLayers.splice(targetIndex, 1);
+          if (oldLayer._blobUrl) URL.revokeObjectURL(oldLayer._blobUrl);
+
+          // 2. Add a fresh layer with the updated data
+          this.addGeoJsonLayerToMap(geoJson, title, backendLayerId);
+          this.cdr.detectChanges();
+        });
       },
       error: (err: any) => console.error('Failed to refresh GeoJSON layer', err)
     });
@@ -460,13 +423,7 @@ closeFeaturePopup(): void {
       if (geoJsonData && r2d && r3d) {
         try { this.map.remove(layer); } catch { /* ignore */ }
         if ((layer as any)._blobUrl) { try { URL.revokeObjectURL((layer as any)._blobUrl); } catch { /* ignore */ } }
-        snapshots.push({
-          title:         layer.title,
-          geoJsonData,
-          r2d,
-          r3d,
-          backendLayerId: (layer as any)._backendLayerId ?? null
-        });
+        snapshots.push({ title: layer.title, geoJsonData, r2d, r3d, backendLayerId: (layer as any)._backendLayerId ?? null });
       }
     }
     this.userLayers = this.userLayers.filter((l: any) => !l._geoJsonData);
@@ -479,8 +436,7 @@ closeFeaturePopup(): void {
         const newBlob  = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
         const newUrl   = URL.createObjectURL(newBlob);
         const newLayer = new GeoJSONLayer({
-          url:           newUrl,
-          title,
+          url: newUrl, title,
           renderer:      is3d ? r3d : r2d,
           elevationInfo: { mode: 'on-the-ground' },
           outFields:     ['*']
@@ -520,12 +476,10 @@ closeFeaturePopup(): void {
             this.layerService.getGeoJson(l.id).subscribe({
               next: (g: any) => {
                 try {
-                  if (g?.type === 'FeatureCollection') {
-                    this.addGeoJsonLayerToMap(g, l.name ?? `layer-${l.id}`, l.id);
-                  } else if (g?.url) {
+                  if (g?.type === 'FeatureCollection') this.addGeoJsonLayerToMap(g, l.name ?? `layer-${l.id}`, l.id);
+                  else if (g?.url) {
                     const geo = new GeoJSONLayer({ url: g.url, title: l.name ?? `layer-${l.id}` });
-                    this.map.add(geo);
-                    this.userLayers.push(geo);
+                    this.map.add(geo); this.userLayers.push(geo);
                   }
                 } catch (err) { console.error('Failed to add GeoJSON layer', err); }
               },
@@ -595,8 +549,7 @@ closeFeaturePopup(): void {
       if (!this.forestLayer) {
         const url = await this.modalService.prompt('Enter Feature/Tile layer URL for Forest Density:');
         this.forestLayer = url ? this.tryFeatureOrTile(url) : new GraphicsLayer({ title: 'Forest Density' });
-        this.map.add(this.forestLayer);
-        this.userLayers.push(this.forestLayer);
+        this.map.add(this.forestLayer); this.userLayers.push(this.forestLayer);
       } else { try { this.map.add(this.forestLayer); } catch { /* ignore */ } }
     } else { try { this.map.remove(this.forestLayer); } catch { /* ignore */ } }
   }
@@ -606,8 +559,7 @@ closeFeaturePopup(): void {
       if (!this.seismicLayer) {
         const url = await this.modalService.prompt('Enter Feature/Tile layer URL for Seismic Activity:');
         this.seismicLayer = url ? this.tryFeatureOrTile(url) : new GraphicsLayer({ title: 'Seismic Activity' });
-        this.map.add(this.seismicLayer);
-        this.userLayers.push(this.seismicLayer);
+        this.map.add(this.seismicLayer); this.userLayers.push(this.seismicLayer);
       } else { try { this.map.add(this.seismicLayer); } catch { /* ignore */ } }
     } else { try { this.map.remove(this.seismicLayer); } catch { /* ignore */ } }
   }
@@ -618,8 +570,7 @@ closeFeaturePopup(): void {
         const input = await this.modalService.prompt('Enter Feature/Scene layer URL (blank = OSM 3D Buildings):');
         const url   = input?.trim() || 'https://basemaps3d.arcgis.com/arcgis/rest/services/OpenStreetMap3D_Buildings_v1/SceneServer';
         this.buildingLayer = url.includes('SceneServer') ? new SceneLayer({ url }) : new FeatureLayer({ url, outFields: ['*'] });
-        this.map.add(this.buildingLayer);
-        this.userLayers.push(this.buildingLayer);
+        this.map.add(this.buildingLayer); this.userLayers.push(this.buildingLayer);
       } else { try { this.map.add(this.buildingLayer); } catch { /* ignore */ } }
     } else { try { this.map.remove(this.buildingLayer); } catch { /* ignore */ } }
   }
@@ -640,12 +591,9 @@ closeFeaturePopup(): void {
     const layer = new FeatureLayer({ url, outFields: ['*'] });
     this.map.add(layer);
     this.userLayers.push(layer);
-
     layer.queryFeatures({ where: '1=1', outFields: ['*'], returnGeometry: true })
       .then((results: any) => {
-        const feats = (results?.features ?? []).map((f: any) => ({
-          attributes: f.attributes, geometry: f.geometry, layerUrl: layer.url
-        }));
+        const feats = (results?.features ?? []).map((f: any) => ({ attributes: f.attributes, geometry: f.geometry, layerUrl: layer.url }));
         this.layerService.setCurrentFeatures(feats);
       })
       .catch((err: any) => console.warn('queryFeatures failed', err));
@@ -692,6 +640,6 @@ closeFeaturePopup(): void {
       .catch(err => console.error('QueryFeatures failed', err));
   }
 
-  getSceneLayerUrl(): string  { return this.sceneLayerUrl ?? ''; }
+  getSceneLayerUrl(): string { return this.sceneLayerUrl ?? ''; }
   setSceneLayerUrl(url: string | null): void { this.sceneLayerUrl = url; }
 }

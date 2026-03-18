@@ -1,4 +1,4 @@
-﻿import { Component, signal, ViewChild } from '@angular/core';
+﻿import { Component, signal, ViewChild, NgZone } from '@angular/core';
 import { OnDestroy } from '@angular/core';
 import { LayerService } from './services/layer';
 import { RouterOutlet, Router } from '@angular/router';
@@ -44,14 +44,19 @@ export class AppComponent implements OnDestroy {
   private _toastTimer: any = null;
   private _subs: any[] = [];
 
-  constructor(private layerService: LayerService, private router: Router) {
+  constructor(private layerService: LayerService, private router: Router, private ngZone: NgZone) {
     // subscribe to layer added notifications to show toast
     const sub = this.layerService.layerAdded$.subscribe((url: string) => {
-      this.showToast('Layer added: ' + url);
+      this.ngZone.run(() => {
+        this.showToast('Layer added: ' + url);
+      });
     });
     this._subs.push(sub);
     // subscribe to generic toasts from services
-    const sub2 = this.layerService.toast$.subscribe((m: string) => { this.showToast(m); });
+    const sub2 = this.layerService.toast$.subscribe((m: string) => { console.log('[AppComponent] toast$ received:', m);
+      this.ngZone.run(() => { this.showToast(m); 
+      }); 
+    });
     this._subs.push(sub2);
   }
 
@@ -107,6 +112,7 @@ export class AppComponent implements OnDestroy {
   }
 
   showToast(msg: string) {
+    console.log('[AppComponent] showToast called, toastMessage =', msg);
     this.toastMessage = msg;
     if (this._toastTimer) window.clearTimeout(this._toastTimer);
     this._toastTimer = window.setTimeout(() => { this.toastMessage = ''; this._toastTimer = null; }, 4000);

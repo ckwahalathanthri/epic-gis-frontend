@@ -109,6 +109,9 @@
   <!-- ── Map Container ───────────────────────────────────────────────── -->
   <div id="mapViewDiv" class="map-view"></div>
 
+  <div class="app-toast" *ngIf="mapToastMessage">
+    <div class="app-toast-inner">{{ mapToastMessage }}</div>
+  </div>
 </div>
 
 
