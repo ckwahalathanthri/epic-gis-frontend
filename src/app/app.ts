@@ -1,7 +1,7 @@
-﻿import { Component, signal, ViewChild, NgZone } from '@angular/core';
+﻿import { Component, signal, ViewChild, NgZone, ChangeDetectorRef } from '@angular/core';
 import { OnDestroy } from '@angular/core';
 import { LayerService } from './services/layer';
-import { RouterOutlet, Router } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd} from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
@@ -43,15 +43,28 @@ export class AppComponent implements OnDestroy {
   toastMessage = '';
   private _toastTimer: any = null;
   private _subs: any[] = [];
+  showMapProperty = true; 
 
-  constructor(private layerService: LayerService, private router: Router, private ngZone: NgZone) {
+  constructor(private layerService: LayerService, private router: Router, private ngZone: NgZone, private cdr: ChangeDetectorRef) {
     // subscribe to layer added notifications to show toast
     const sub = this.layerService.layerAdded$.subscribe((url: string) => {
       this.ngZone.run(() => {
         this.showToast('Layer added: ' + url);
       });
     });
-    this._subs.push(sub);
+    this._subs.push(
+      this.router.events.subscribe((event) => {
+        if (event instanceof NavigationEnd) {
+          this.ngZone.run(() => {
+            this.showMapProperty = event.url === '/' || event.url.startsWith('/?');
+            this.cdr.detectChanges(); // Force UI update
+          });
+        }
+      })
+    );
+
+    this.showMapProperty = this.router.url === '/' || this.router.url.startsWith('/?');
+
     // subscribe to generic toasts from services
     const sub2 = this.layerService.toast$.subscribe((m: string) => { console.log('[AppComponent] toast$ received:', m);
       this.ngZone.run(() => { this.showToast(m); 
@@ -119,7 +132,7 @@ export class AppComponent implements OnDestroy {
   }
 
   get showMap() {
-    return this.router.url === '/' || this.router.url.startsWith('/?');
+    return this.showMapProperty;
   }
 
   goToFiles() {
