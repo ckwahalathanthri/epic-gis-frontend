@@ -207,7 +207,7 @@ export class MapComponent implements OnInit, OnDestroy {
     });
   }
 
-  private refreshSingleGeoJsonLayer(backendLayerId: string): void {
+    private refreshSingleGeoJsonLayer(backendLayerId: string): void {
     const oldLayer = this.mapCore.removeLayerByBackendId(backendLayerId);
     if (!oldLayer) {
         this.mapState.stopLoading();
@@ -216,14 +216,33 @@ export class MapComponent implements OnInit, OnDestroy {
 
     this.mapState.startLoading('Refreshing map data...');
     try {
-      const layer = this.mapCore.addVectorTileLayerToMap(backendLayerId, oldLayer.title);
-      if (layer) {
-          this.mapCore.view.whenLayerView(layer).then(() => {
-             this.mapState.stopLoading();
-             this.cdr.detectChanges();
-          }).catch(() => this.mapState.stopLoading());
+      if (this.mapState.is3DMode()) {
+        // FETCH AS GEOJSON FOR 3D EXTRUSION
+        this.layerService.getLayerGeoJson(backendLayerId).subscribe({
+          next: (geoJson: any) => {
+            const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, oldLayer.title, backendLayerId, true);
+            if (layer) {
+              this.mapCore.view.whenLayerView(layer).then(() => {
+                this.mapState.stopLoading();
+                this.cdr.detectChanges();
+              }).catch(() => this.mapState.stopLoading());
+            } else {
+              this.mapState.stopLoading();
+            }
+          },
+          error: () => this.mapState.stopLoading()
+        });
       } else {
-         this.mapState.stopLoading();
+        // USE LIGHTNING FAST VECTOR TILES FOR 2D
+        const layer = this.mapCore.addVectorTileLayerToMap(backendLayerId, oldLayer.title);
+        if (layer) {
+            this.mapCore.view.whenLayerView(layer).then(() => {
+               this.mapState.stopLoading();
+               this.cdr.detectChanges();
+            }).catch(() => this.mapState.stopLoading());
+        } else {
+           this.mapState.stopLoading();
+        }
       }
     } catch (e) {
       this.mapState.stopLoading();
