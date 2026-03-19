@@ -55,3 +55,44 @@
 }
 
 .view-btn:hover { background: #005a92; }
+
+/* Card layout fix to accommodate dual buttons evenly */
+.card-actions {
+  margin-top: auto;   /* Pushes buttons to the bottom regardless of card height */
+  display: flex;
+  gap: 8px;           /* Adds space between buttons */
+}
+
+/* Base button properties shared between both sizes */
+.action-btn {
+  flex: 1;            /* Forces both buttons to split width exactly 50/50 */
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+/* Specific properties for "View on Map" */
+.view-btn {
+  background: #0079c1;
+}
+
+.view-btn:hover { 
+  background: #005a92; 
+}
+
+/* Specific properties for "Delete" */
+.delete-btn {
+  background: #e74c3c;
+}
+
+.delete-btn:hover { 
+  background: #c0392b; 
+}

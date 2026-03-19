@@ -76,10 +76,23 @@ export class MapComponent implements OnInit, OnDestroy {
     this.mapCore.view?.destroy();
   }
 
-  toggle3D(): void {
+    toggle3D(): void {
     this.mapState.toggle3DMode();
-    this.mapCore.switchMode(this.mapState.is3DMode()).then(() => {
+    const is3d = this.mapState.is3DMode();
+
+    // 1. Remove all dynamically added backend layers before switching
+    const layersToRemove = this.mapCore.userLayers.filter((l: any) => l._backendLayerId);
+    layersToRemove.forEach(l => {
+      this.mapCore.map.remove(l);
+      if (l._blobUrl) URL.revokeObjectURL(l._blobUrl);
+    });
+    this.mapCore.userLayers = this.mapCore.userLayers.filter((l: any) => !l._backendLayerId);
+
+    // 2. Switch maps and reload layers
+    this.mapCore.switchMode(is3d).then(() => {
       this.setupPopupHandler();
+      // Reload layers into the new view (MVT if 2D, GeoJSON if 3D)
+      this.loadBackendLayers();
     });
   }
 
@@ -108,32 +121,24 @@ export class MapComponent implements OnInit, OnDestroy {
       next: (res: any) => {
         if (!res?.id) { this.mapState.stopLoading(); return; }
         
-        this.layerService.getLayerGeoJson(res.id).subscribe({
-          next: (geoJson: any) => {
-            this.mapState.startLoading('Drawing layer on map...');
-            const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, res.layerName, res.id, this.mapState.is3DMode());
-            
-            if (layer) {
-              this.mapCore.view.whenLayerView(layer).then((layerView: any) => {
-                layer.when(() => {
-                  if (layer.fullExtent) {
-                    this.mapCore.view.goTo(layer.fullExtent).then(() => {
-                        this.mapState.stopLoading();
-                        this.cdr.detectChanges();
-                    }).catch(() => this.mapState.stopLoading());
-                  } else {
-                    this.mapState.stopLoading();
-                  }
-                });
-              }).catch(() => {
-                  this.mapState.stopLoading();
-              });
-            } else {
+        this.mapState.startLoading('Drawing layer on map...');
+        try {
+          const layer = this.mapCore.addVectorTileLayerToMap(res.id, res.layerName);
+          if (layer) {
+            this.mapCore.view.whenLayerView(layer).then(() => {
+               // VectorTileLayers do not reliably have a fullExtent natively calculable instantly from initialization like GeoJSON.
+               // It's possible to hit the REST endpoint or zoom to max, but for now we'll just draw it.
+               this.mapState.stopLoading();
+               this.cdr.detectChanges();
+            }).catch(() => {
                 this.mapState.stopLoading();
-            }
-          },
-          error: () => this.mapState.stopLoading()
-        });
+            });
+          } else {
+              this.mapState.stopLoading();
+          }
+        } catch (e) {
+            this.mapState.stopLoading();
+        }
       },
       error: (err: any) => {
         console.error('Upload failed', err);
@@ -210,22 +215,19 @@ export class MapComponent implements OnInit, OnDestroy {
     }
 
     this.mapState.startLoading('Refreshing map data...');
-    this.layerService.getLayerGeoJson(backendLayerId).subscribe({
-      next: (geoJson: any) => {
-        this.ngZone.run(() => {
-          const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, oldLayer.title, backendLayerId, this.mapState.is3DMode());
-          if (layer) {
-              this.mapCore.view.whenLayerView(layer).then(() => {
-                 this.mapState.stopLoading();
-                 this.cdr.detectChanges();
-              }).catch(() => this.mapState.stopLoading());
-          } else {
+    try {
+      const layer = this.mapCore.addVectorTileLayerToMap(backendLayerId, oldLayer.title);
+      if (layer) {
+          this.mapCore.view.whenLayerView(layer).then(() => {
              this.mapState.stopLoading();
-          }
-        });
-      },
-      error: () => this.mapState.stopLoading()
-    });
+             this.cdr.detectChanges();
+          }).catch(() => this.mapState.stopLoading());
+      } else {
+         this.mapState.stopLoading();
+      }
+    } catch (e) {
+      this.mapState.stopLoading();
+    }
   }
 
   private setupPopupHandler(): void {
@@ -304,26 +306,27 @@ export class MapComponent implements OnInit, OnDestroy {
             } catch { checkAllLoaded(); }
           } else if (l.id) {
             layersToLoad++;
-            this.layerService.getGeoJson(l.id).subscribe({
-              next: (g: any) => {
-                if (g?.type === 'FeatureCollection') {
-                  const layer = this.mapCore.addGeoJsonLayerToMap(g, l.name ?? `layer-${l.id}`, l.id, this.mapState.is3DMode());
-                  if (layer) {
-                      this.mapCore.view.whenLayerView(layer).then(checkAllLoaded).catch(checkAllLoaded);
-                  } else {
-                      checkAllLoaded();
-                  }
-                } else if (g?.url) {
-                  const layer = this.mapCore.addGeoJsonLayerFromUrl?.(g.url, l.name ?? `layer-${l.id}`);
-                  if (layer) {
-                      this.mapCore.view.whenLayerView(layer).then(checkAllLoaded).catch(checkAllLoaded);
-                  } else {
-                      checkAllLoaded();
-                  }
-                } else { checkAllLoaded(); }
-              },
-              error: () => checkAllLoaded()
-            });
+            try {
+              const layerTitle = l.name ?? `layer-${l.id}`;
+              
+              if (this.mapState.is3DMode()) {
+                // FETCH AS GEOJSON FOR 3D EXTRUSION
+                this.layerService.getLayerGeoJson(l.id).subscribe({
+                  next: (geoJson: any) => {
+                    const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, layerTitle, l.id, true);
+                    if (layer) this.mapCore.view.whenLayerView(layer).then(checkAllLoaded).catch(checkAllLoaded);
+                    else checkAllLoaded();
+                  },
+                  error: checkAllLoaded
+                });
+              } else {
+                // USE LIGHTNING FAST VECTOR TILES FOR 2D
+                const layer = this.mapCore.addVectorTileLayerToMap(l.id, layerTitle);
+                if (layer) {
+                  this.mapCore.view.whenLayerView(layer).then(checkAllLoaded).catch(checkAllLoaded);
+                } else checkAllLoaded();
+              }
+            } catch { checkAllLoaded(); }
           }
         }
         
