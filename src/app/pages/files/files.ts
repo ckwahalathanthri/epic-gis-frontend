@@ -53,6 +53,30 @@ export class FilesComponent implements OnInit {
     this.router.navigate(['/'], { queryParams: { layer: layerId } });
   }
 
+    deleteFile(layerId: string) {
+    if (!confirm('Are you sure you want to permanently delete this spatial layer and all its geometries?')) {
+      return;
+    }
+
+    this.isLoading = true;
+    this.cdr.detectChanges();
+
+    this.layerService.deleteLayer(layerId).subscribe({
+      next: () => {
+        // Filter out the deleted file from the local state array immediately
+        this.layers = this.layers.filter(l => l.id !== layerId);
+        this.isLoading = false;
+        this.cdr.detectChanges(); // Ensure the view physically drops the card
+      },
+      error: (err) => {
+        console.error('Delete failed', err);
+        this.errorMessage = `Failed to delete layer: ${err.message}`;
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   getFormatIcon(format: string): string {
     switch (format?.toUpperCase()) {
       case 'ZIP': return '🗜️';

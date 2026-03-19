@@ -5,6 +5,7 @@ import MapView from '@arcgis/core/views/MapView';
 import SceneView from '@arcgis/core/views/SceneView';
 import FeatureLayer from '@arcgis/core/layers/FeatureLayer';
 import GeoJSONLayer from '@arcgis/core/layers/GeoJSONLayer';
+import VectorTileLayer from '@arcgis/core/layers/VectorTileLayer'; 
 import KMLLayer from '@arcgis/core/layers/KMLLayer';
 import TileLayer from '@arcgis/core/layers/TileLayer';
 import MapImageLayer from '@arcgis/core/layers/MapImageLayer';
@@ -68,15 +69,13 @@ export class MapCoreService {
 
   // ── 2D/3D Swap Logic ────────────────────────────────────────
 
-  async switchMode(is3D: boolean): Promise<void> {
+    async switchMode(is3D: boolean): Promise<void> {
     if (is3D && this.view?.type === '3d') return;
     if (!is3D && this.view?.type === '2d') return;
 
     let currentViewpoint: any = null;
     if (this.view?.viewpoint) currentViewpoint = this.view.viewpoint.clone();
     if (this.view) this.view.container = null; // Unbind existing container
-
-    const layerSnapshots = this.snapshotAndRemoveGeoJsonLayers();
 
     if (is3D) {
       if (!this.sceneView) {
@@ -98,7 +97,6 @@ export class MapCoreService {
 
     this.view.when(() => {
       this.addDefaultWidgets();
-      this.restoreGeoJsonLayers(layerSnapshots, is3D);
       this.restoreViewpoint(currentViewpoint, is3D);
     });
   }
@@ -135,6 +133,65 @@ export class MapCoreService {
 
     this.map.add(layer);
     this.userLayers.push(layer);
+    return layer;
+  }
+
+    // ── Vector Tile Generation (High Performance) ──────────────────
+
+  addVectorTileLayerToMap(layerId: string, title: string): VectorTileLayer {
+    const layer = new VectorTileLayer({
+      title: title,
+      style: {
+        version: 8,
+        sources: {
+          'epic-source': {
+            type: 'vector',
+            tiles: [ `http://localhost:8080/api/layers/${layerId}/tiles/{z}/{x}/{y}.pbf` ]
+          }
+        },
+        layers: [
+          {
+            id: 'epic-layer-fill',
+            type: 'fill',
+            source: 'epic-source',
+            'source-layer': 'default',
+            paint: {
+              'fill-color': '#ff00ff',
+              'fill-opacity': 0.4
+            }
+          },
+          {
+            id: 'epic-layer-line',
+            type: 'line',
+            source: 'epic-source',
+            'source-layer': 'default',
+            paint: {
+              'line-color': '#00ffff',
+              'line-width': 2
+            }
+          },
+          {
+            id: 'epic-layer-circle',
+            type: 'circle',
+            source: 'epic-source',
+            'source-layer': 'default',
+            paint: {
+              'circle-color': '#ff6400',
+              'circle-radius': 4,
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-width': 1
+            }
+          }
+        ]
+      }
+    });
+    
+    // Track it just like we do with GeoJSON layers
+    (layer as any)._backendLayerId = layerId;
+    
+    this.map.add(layer);
+    this.userLayers.push(layer);
+    
     return layer;
   }
 

@@ -43,6 +43,10 @@ export class LayerService {
     return this.http.put(`${this.baseUrl}/${layerId}/features`, body);
   }
 
+  deleteLayer(layerId: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/${layerId}`);
+  }
+
   // Emits a toast message
   emitToast(msg: string) {
     console.log('[LayerService] emitToast called with:', msg);
