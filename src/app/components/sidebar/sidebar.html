@@ -1,23 +1,29 @@
 <div class="sidebar-container">
+  <!-- 1. DATA MANAGEMENT -->
   <div class="sidebar-section">
     <h3>🗂️ Data Management</h3>
     <button class="menu-btn" (click)="goToFiles()">View Files</button>
     
-    <!-- Upload -->
     <input type="file" #fileInput (change)="onUpload($event)" accept=".zip,.kml,.kmz,.json,.geojson" style="display:none">
-    <button class="menu-btn hover-action" (click)="fileInput.click()">⬆️ Upload Layer</button>
+    <button class="menu-btn hover-action" (click)="fileInput.click()">⬆️ Upload Local Layer</button>
 
-    <!-- Map Toggles and Web Layers -->
-    <button class="menu-btn" [class.btn-3d-active]="mapState.is3DMode()" (click)="onToggle3D.emit()">
-      {{ mapState.is3DMode() ? '🗺️ Switch to 2D' : '🌐 Switch to 3D' }}
-    </button>
-    
-    <button class="menu-btn" (click)="onAddWebLayer.emit()">＋ Add Web Layer</button>
-    <button class="menu-btn" (click)="onAddKML.emit()">📌 Add KML URL</button>
+    <button class="menu-btn action-btn" (click)="onAddWebLayer.emit()">＋ Add Web Layer URL</button>
+    <button class="menu-btn action-btn" (click)="onAddKML.emit()">📌 Add KML URL</button>
   </div>
 
   <div class="divider"></div>
 
+  <!-- 2. MAP VIEW SETTINGS -->
+  <div class="sidebar-section">
+    <h3>🌍 View Settings</h3>
+    <button class="menu-btn" [class.btn-3d-active]="mapState.is3DMode()" (click)="onToggle3D.emit()">
+      {{ mapState.is3DMode() ? '🗺️ Switch to 2D Map' : '🌐 Switch to 3D Globe' }}
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 3. CREATION TOOLS -->
   <div class="sidebar-section">
     <h3>🏗️ Creation Tools</h3>
     <button class="menu-btn" 
