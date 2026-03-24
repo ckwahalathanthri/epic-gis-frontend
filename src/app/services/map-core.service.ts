@@ -316,6 +316,38 @@ export class MapCoreService {
     return snapshots;
   }
 
+    // ── Phase 2: Create New Geometry ──────────────────────────────
+  
+  startDrawing(type: 'point' | 'polyline' | 'polygon', onComplete: (geojson: any) => void): void {
+    if (!this.graphicsLayer) {
+      this.graphicsLayer = new GraphicsLayer();
+      this.map.add(this.graphicsLayer);
+      this.userLayers.push(this.graphicsLayer);
+    }
+
+    if (!this.sketchWidget) {
+      this.sketchWidget = new Sketch({
+        layer: this.graphicsLayer,
+        view: this.view,
+        creationMode: 'single'
+      });
+      
+      // Listen for the draw completion event
+      this.sketchWidget.on('create', (event) => {
+        if (event.state === 'complete') {
+          const geoJson = this.convertToGeoJson(event.graphic.geometry);
+          onComplete(geoJson);
+        }
+        if (event.state === 'cancel') {
+          onComplete(null);
+        }
+      });
+    }
+
+    // Trigger the sketch tool
+    this.sketchWidget.create(type);
+  }
+
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {
     for (const { title, geoJsonData, r2d, r3d, backendLayerId } of snapshots) {
       try {

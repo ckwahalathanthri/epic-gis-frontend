@@ -29,11 +29,13 @@
   
   <!-- NEW SIDEBAR COMPONENT -->
   <div style="width: 300px; min-width: 300px; border-right: 1px solid #1e3a5f;">
-    <app-sidebar 
+        <app-sidebar 
       (onToggle3D)="triggerToggle3D()" 
       (onUploadEvent)="triggerUpload($event)"
       (onAddWebLayer)="triggerAddFeatureLayer()"
-      (onAddKML)="triggerAddKML()">
+      (onAddKML)="triggerAddKML()"
+      (onStartDrawing)="triggerStartDrawing($event)"
+      (onCancelDrawing)="triggerCancelDrawing()">
     </app-sidebar>
   </div>
 

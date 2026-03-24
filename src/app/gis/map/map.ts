@@ -24,6 +24,7 @@ export class MapComponent implements OnInit, OnDestroy {
   private clickHandle: any = null;
   private editingGraphic: Graphic | null = null;
   private backendLayerSubscription: any = null;
+  private viewedLayerId: string | null = null;
 
   constructor(
     private layerService: LayerService,
@@ -61,6 +62,8 @@ export class MapComponent implements OnInit, OnDestroy {
 
       if (layerId) {
          // You can formulate logic here to specifically fetch/load `layerId`
+         this.viewedLayerId = layerId || null;
+         if (this.viewedLayerId) this.loadBackendLayers(this.viewedLayerId);
          this.loadBackendLayers(); 
       } else {
          // Load normal map bounds
@@ -351,6 +354,70 @@ export class MapComponent implements OnInit, OnDestroy {
         if (layersToLoad === 0) {
             this.mapState.stopLoading();
         }
+      },
+      error: () => this.mapState.stopLoading()
+    });
+  }
+
+    startDrawingSession(type: 'point' | 'polyline' | 'polygon') {
+    // 1. Tell ArcGIS to start drawing
+    this.mapCore.startDrawing(type, (geoJsonGeometry) => {
+      this.mapState.setDrawingMode(false, null); // Stop UI spin
+      if (!geoJsonGeometry) return; // User cancelled
+
+      // 2. Decide how to save based on if we are viewing a layer or starting fresh
+      if (this.viewedLayerId) {
+        // Appending to an existing viewed dataset
+        this.saveFeatureToExistingFile(this.viewedLayerId, geoJsonGeometry);
+      } else {
+        // We aren't viewing a specific file; mock an upload to create a new file
+        this.saveGeometryAsNewFile(type, geoJsonGeometry);
+      }
+    });
+  }
+
+  private saveFeatureToExistingFile(layerId: string, geometry: any) {
+    if (!confirm('Would you like to save this new building to the currently viewed dataset?')) return;
+    
+    this.mapState.startLoading('Saving feature to existing layer...');
+    this.layerService.addFeatureToLayer(layerId, geometry, { name: 'New Geometry' }).subscribe({
+      next: () => {
+        this.mapState.stopLoading();
+        this.layerService.emitToast('✅ Attached to current file successfully!');
+        this.refreshSingleGeoJsonLayer(layerId); // Refresh map to show it
+      },
+      error: () => {
+        this.mapState.stopLoading();
+        this.layerService.emitToast('❌ Failed to save feature.');
+      }
+    });
+  }
+
+  private saveGeometryAsNewFile(type: string, geometry: any) {
+    const fileName = prompt('Enter a name for your NEW spatial file:', `Drawn_${type}_${Date.now()}`);
+    if (!fileName) return;
+
+    // Convert the isolated GeoJSON feature into a fully standard GeoJSON file map
+    const featureCollection = {
+      type: "FeatureCollection",
+      features: [{
+        type: "Feature",
+        properties: { name: fileName },
+        geometry: geometry
+      }]
+    };
+
+    // Convert to a File Blob just like standard frontend upload tools
+    const blob = new Blob([JSON.stringify(featureCollection)], { type: 'application/json' });
+    const fakeFile = new File([blob], `${fileName}.geojson`, { type: 'application/geo+json' });
+
+    this.mapState.startLoading('Creating new map layer...');
+    
+    // Leverage your existing perfect file-upload pipeline!
+    this.layerService.uploadLayer(fakeFile, fileName).subscribe({
+      next: (res: any) => {
+        this.layerService.emitToast('✅ Created new layer successfully!');
+        this.loadBackendLayers(res.id); // Draw newly created layer
       },
       error: () => this.mapState.stopLoading()
     });
