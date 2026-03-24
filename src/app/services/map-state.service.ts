@@ -30,6 +30,10 @@ export class MapStateService {
   readonly isDashboardOpen = signal<boolean>(true);
   readonly activeDashboardTab = signal<'data' | 'draw'>('data');
 
+  // --- Drawing State ---
+  readonly isDrawingMode = signal<boolean>(false);
+  readonly drawType = signal<'point' | 'polyline' | 'polygon' | null>(null);
+
   // --- Actions / Mutations ---
 
   toggleDashboard() {
@@ -83,6 +87,11 @@ export class MapStateService {
     if (!this.isDashboardOpen()) {
       this.isDashboardOpen.set(true); // Open the dashboard if a tab is clicked
     }
+  }
+
+  setDrawingMode(isDrawing: boolean, type: 'point' | 'polyline' | 'polygon' | null = null) {
+    this.isDrawingMode.set(isDrawing);
+    this.drawType.set(type);
   }
 
   startLoading(message: string = 'Loading...') {
