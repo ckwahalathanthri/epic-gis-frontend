@@ -6,3 +6,25 @@
     .menu-btn.active { background: #4fc3f7; color: #0a1426; font-weight: bold; }
     .cancel-btn { background: #d32f2f; border-color: #f44336; margin-top: 15px; text-align: center; }
     .cancel-btn:hover { background: #f44336; }
+
+    /* Add these to your existing sidebar.css */
+.btn-3d-active {
+  background: #34c759;
+  color: #06201a;
+  border-color: #34c759;
+  font-weight: bold;
+}
+
+.btn-3d-active:hover {
+  background: #2ebd4e; 
+}
+
+/* Optional: visually separate the web layer buttons from drawing tools */
+.action-btn {
+  background: #1e3a5f;
+  border-style: dashed;
+}
+
+.action-btn:hover {
+  border-style: solid;
+}
