@@ -26,7 +26,15 @@ export class MapStateService {
   readonly isSaving = signal<boolean>(false);
   readonly saveSuccess = signal<boolean>(false);
 
+  // --- Dashboard State ---
+  readonly isDashboardOpen = signal<boolean>(true);
+  readonly activeDashboardTab = signal<'data' | 'draw'>('data');
+
   // --- Actions / Mutations ---
+
+  toggleDashboard() {
+    this.isDashboardOpen.set(!this.isDashboardOpen());
+  }
   
   toggle3DMode() {
     this.is3DMode.set(!this.is3DMode());
@@ -68,6 +76,13 @@ export class MapStateService {
 
   setSaveSuccess(success: boolean) {
     this.saveSuccess.set(success);
+  }
+
+  setDashboardTab(tab: 'data' | 'draw') {
+    this.activeDashboardTab.set(tab);
+    if (!this.isDashboardOpen()) {
+      this.isDashboardOpen.set(true); // Open the dashboard if a tab is clicked
+    }
   }
 
   startLoading(message: string = 'Loading...') {
