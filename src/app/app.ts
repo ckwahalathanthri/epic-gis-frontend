@@ -145,4 +145,20 @@ export class AppComponent implements OnDestroy {
   goToMap() {
     this.router.navigate(['/']);
   }
+
+  triggerToggle3D() {
+    this.mapComp?.toggle3D();
+  }
+
+  triggerUpload(event: any) {
+    this.mapComp?.uploadFile(event);
+  }
+
+  triggerAddFeatureLayer() {
+    this.mapComp?.addFeatureLayer();
+  }
+
+  triggerAddKML() {
+    this.mapComp?.addKMLLayer();
+  }
 }
