@@ -109,4 +109,8 @@ export class LayerService {
     return of({ type: 'FeatureCollection', features: [] });
   }
 
+  addFeatureToLayer(layerId: string, geometry: any, properties: any = {}): Observable<any> {
+    return this.http.post(`${this.baseUrl}/${layerId}/features`, { properties, geometry });
+  }
+
 }

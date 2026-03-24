@@ -16,6 +16,8 @@ export class SidebarComponent {
   @Output() onUploadEvent = new EventEmitter<any>();
   @Output() onAddWebLayer = new EventEmitter<void>();
   @Output() onAddKML = new EventEmitter<void>();
+  @Output() onStartDrawing = new EventEmitter<'point' | 'polyline' | 'polygon'>();
+  @Output() onCancelDrawing = new EventEmitter<void>();
 
   constructor(
     private router: Router, 
@@ -37,12 +39,12 @@ export class SidebarComponent {
     } else {
       this.mapState.setDrawingMode(true, type);
       this.layerService.emitToast(`Drawing mode initiated: ${type}`);
-      // In Phase 2, we will tell ArcMap to actually begin drawing here
+      this.onStartDrawing.emit(type);
     }
   }
 
   cancelDraw() {
     this.mapState.setDrawingMode(false, null);
-    // In Phase 2, we will send an abort command to the Sketch widget here
+    this.onCancelDrawing.emit();
   }
 }
