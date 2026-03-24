@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MapStateService } from '../../services/map-state.service';
@@ -12,6 +12,11 @@ import { LayerService } from '../../services/layer';
   styleUrls: ['./sidebar.css']
 })
 export class SidebarComponent {
+  @Output() onToggle3D = new EventEmitter<void>();
+  @Output() onUploadEvent = new EventEmitter<any>();
+  @Output() onAddWebLayer = new EventEmitter<void>();
+  @Output() onAddKML = new EventEmitter<void>();
+
   constructor(
     private router: Router, 
     public mapState: MapStateService,
@@ -23,11 +28,7 @@ export class SidebarComponent {
   }
 
   onUpload(event: any) {
-    // You will route this later to the map.ts logic or layerService directly
-    const file = event.target?.files?.[0];
-    if (file) {
-      this.layerService.emitToast('Upload triggered for ' + file.name + ' (Routing logic to be attached)');
-    }
+    this.onUploadEvent.emit(event);
   }
 
   toggleDraw(type: 'point' | 'polyline' | 'polygon') {

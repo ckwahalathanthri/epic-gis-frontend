@@ -1,31 +1,39 @@
 <div class="sidebar-container">
-      <div class="sidebar-section">
-        <h3>🗂️ Data Management</h3>
-        <button class="menu-btn" (click)="goToFiles()">View Files</button>
-        
-        <!-- Hidden file input triggered by "Upload File" button -->
-        <input type="file" #fileInput (change)="onUpload($event)" accept=".zip,.kml,.json,.geojson" style="display:none">
-        <button class="menu-btn hover-action" (click)="fileInput.click()">⬆️ Upload Layer</button>
-      </div>
+  <div class="sidebar-section">
+    <h3>🗂️ Data Management</h3>
+    <button class="menu-btn" (click)="goToFiles()">View Files</button>
+    
+    <!-- Upload -->
+    <input type="file" #fileInput (change)="onUpload($event)" accept=".zip,.kml,.kmz,.json,.geojson" style="display:none">
+    <button class="menu-btn hover-action" (click)="fileInput.click()">⬆️ Upload Layer</button>
 
-      <div class="divider"></div>
+    <!-- Map Toggles and Web Layers -->
+    <button class="menu-btn" [class.btn-3d-active]="mapState.is3DMode()" (click)="onToggle3D.emit()">
+      {{ mapState.is3DMode() ? '🗺️ Switch to 2D' : '🌐 Switch to 3D' }}
+    </button>
+    
+    <button class="menu-btn" (click)="onAddWebLayer.emit()">＋ Add Web Layer</button>
+    <button class="menu-btn" (click)="onAddKML.emit()">📌 Add KML URL</button>
+  </div>
 
-      <div class="sidebar-section">
-        <h3>🏗️ Creation Tools</h3>
-        <button class="menu-btn" 
-                [class.active]="mapState.drawType() === 'point'" 
-                (click)="toggleDraw('point')">📍 Draw Point</button>
-                
-        <button class="menu-btn" 
-                [class.active]="mapState.drawType() === 'polyline'" 
-                (click)="toggleDraw('polyline')">〰️ Draw Line</button>
-                
-        <button class="menu-btn" 
-                [class.active]="mapState.drawType() === 'polygon'" 
-                (click)="toggleDraw('polygon')">🏢 Draw Building</button>
+  <div class="divider"></div>
 
-        <button *ngIf="mapState.isDrawingMode()" 
-                class="menu-btn cancel-btn" 
-                (click)="cancelDraw()">❌ Cancel Drawing</button>
-      </div>
-    </div>
+  <div class="sidebar-section">
+    <h3>🏗️ Creation Tools</h3>
+    <button class="menu-btn" 
+            [class.active]="mapState.drawType() === 'point'" 
+            (click)="toggleDraw('point')">📍 Draw Point</button>
+            
+    <button class="menu-btn" 
+            [class.active]="mapState.drawType() === 'polyline'" 
+            (click)="toggleDraw('polyline')">〰️ Draw Line</button>
+            
+    <button class="menu-btn" 
+            [class.active]="mapState.drawType() === 'polygon'" 
+            (click)="toggleDraw('polygon')">🏢 Draw Building</button>
+
+    <button *ngIf="mapState.isDrawingMode()" 
+            class="menu-btn cancel-btn" 
+            (click)="cancelDraw()">❌ Cancel Drawing</button>
+  </div>
+</div>
