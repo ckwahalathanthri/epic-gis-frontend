@@ -44,4 +44,6 @@
   </div>
 </div>
 
-<div class="page-container" *ngIf="!showMap" ...>
+<div class="page-container" *ngIf="!showMap" style="height: 100vh; padding-top: 64px; overflow-y: auto;">
+  <router-outlet></router-outlet>
+</div>
