@@ -1,0 +1,8 @@
+.sidebar-container { padding: 20px; color: #fff; height: 100%; overflow-y: auto; }
+    .sidebar-section h3 { font-size: 14px; margin-bottom: 15px; color: #4fc3f7; text-transform: uppercase; letter-spacing: 1px;}
+    .divider { height: 1px; background: #1e3a5f; margin: 20px 0; }
+    .menu-btn { display: block; width: 100%; text-align: left; padding: 10px 15px; margin-bottom: 8px; background: #1a2942; border: 1px solid #2a4365; color: #fff; border-radius: 6px; cursor: pointer; transition: 0.2s;}
+    .menu-btn:hover { background: #2a4365; border-color: #4fc3f7; }
+    .menu-btn.active { background: #4fc3f7; color: #0a1426; font-weight: bold; }
+    .cancel-btn { background: #d32f2f; border-color: #f44336; margin-top: 15px; text-align: center; }
+    .cancel-btn:hover { background: #f44336; }

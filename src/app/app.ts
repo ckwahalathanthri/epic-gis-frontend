@@ -10,6 +10,7 @@ import { CesiumMapComponent } from './gis/cesium-map/cesium-map';
 import { ToolsPanel } from "./components/tools-panel/tools-panel";
 import { AttributesTable } from './components/attributes-table/attributes-table';
 import { AppModal } from './components/app-modal/app-modal';
+import { SidebarComponent } from './components/sidebar/sidebar';
 declare const window: any;
 
 @Component({
@@ -24,7 +25,8 @@ declare const window: any;
     ToolsPanel,
     AttributesTable,
     AppModal,
-    RouterOutlet
+    RouterOutlet,
+    SidebarComponent
   ],
   templateUrl: './app.html',
   styleUrls: ['./app.css']

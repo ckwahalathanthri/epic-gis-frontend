@@ -26,7 +26,19 @@ export class MapStateService {
   readonly isSaving = signal<boolean>(false);
   readonly saveSuccess = signal<boolean>(false);
 
+  // --- Dashboard State ---
+  readonly isDashboardOpen = signal<boolean>(true);
+  readonly activeDashboardTab = signal<'data' | 'draw'>('data');
+
+  // --- Drawing State ---
+  readonly isDrawingMode = signal<boolean>(false);
+  readonly drawType = signal<'point' | 'polyline' | 'polygon' | null>(null);
+
   // --- Actions / Mutations ---
+
+  toggleDashboard() {
+    this.isDashboardOpen.set(!this.isDashboardOpen());
+  }
   
   toggle3DMode() {
     this.is3DMode.set(!this.is3DMode());
@@ -68,6 +80,18 @@ export class MapStateService {
 
   setSaveSuccess(success: boolean) {
     this.saveSuccess.set(success);
+  }
+
+  setDashboardTab(tab: 'data' | 'draw') {
+    this.activeDashboardTab.set(tab);
+    if (!this.isDashboardOpen()) {
+      this.isDashboardOpen.set(true); // Open the dashboard if a tab is clicked
+    }
+  }
+
+  setDrawingMode(isDrawing: boolean, type: 'point' | 'polyline' | 'polygon' | null = null) {
+    this.isDrawingMode.set(isDrawing);
+    this.drawType.set(type);
   }
 
   startLoading(message: string = 'Loading...') {

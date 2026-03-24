@@ -23,10 +23,9 @@ This document outlines the architectural decisions, structural designs, and refa
 
 **Why & How We Used It:** We utilized PostGIS to firmly store and query large-scale coordinate geometries via Hibernate Spatial (`SqlTypes.GEOMETRY`). By storing coordinates as native geometric objects rather than raw text or independent lat/lon columns, we take advantage of powerful spatial indexing (GiST), which makes querying and retrieving large map layers inherently fast and mathematically grounded.
 
-**Future Capabilities:** Moving forward, PostGIS unlocks advanced server-side spatial capabilities to enhance the application without overloading the Angular frontend, such as:
-*   **Spatial Joins & Intersections:** Dynamically calculating relationships between different uploaded layers (e.g., finding all properties that fall inside a specific flood polygon).
-*   **Proximity Queries:** Efficiently querying features within a specific distance or radius (e.g., Geofencing or buffering).
-*   **Vector Tile Generation:** Utilizing built-in functions like `ST_AsMVT` to serve massive datasets directly from the database as lightweight vector tiles, which would dramatically improve massive dataset rendering performance on the ArcGIS frontend.
+**Advanced Capabilities utilized/planned:**
+*   **Vector Tile Generation (MVT):** Implemented high-performance tile rendering utilizing PostGIS's built-in `ST_AsMVT` and `ST_AsMVTGeom` functions. This serves massive datasets directly from the database as lightweight protocol buffers (`.pbf`), instantly painting them onto the ArcGIS frontend instead of transferring heavy raw JSON.
+*   **Spatial Joins & Proximity Queries (Future):** PostGIS unlocks the ability to calculate relationships and geofences (e.g., finding all properties inside a flood polygon or buffering a radius) entirely server-side.
 
 ### Database Structure
 The core challenge in GIS systems is handling *dynamic* schemas. Different shapefiles have entirely different tabular columns (e.g., a forest layer has "tree_type", a roads layer has "speed_limit"). 
@@ -45,6 +44,10 @@ The core challenge in GIS systems is handling *dynamic* schemas. Different shape
    * `layerId` (`UUID`): Foreign Key reference back to `uploaded_layers.id`.
    * `properties` (`jsonb` / `Map<String, Object>`): Instead of altering database columns every time a user uploads a new shapefile, we utilized a dynamic JSON mapping (`jsonb` in Postgres/database) to store the diverse string/number properties of each feature. 
    * `geom` (`geometry`): Stored natively using Hibernate `SqlTypes.GEOMETRY` mapped to JTS `Geometry`. This allows the Spring Boot backend and the Database to execute raw spatial calculations locally and efficiently repackage data as GeoJSON.
+
+3. **`spatial_ref_sys` Table (PostGIS System Table):** A critical native PostGIS table foundational to the application's coordinate math. 
+   * **What it is:** It acts as a "translation dictionary" for maps, storing the mathematical projection formulas for thousands of Spatial Reference Identifiers (SRIDs).
+   * **Role in app:** It powers coordinate transformations (e.g., `ST_Transform`), enabling the database to instantly recalculate coordinates from standard GPS degrees (SRID 4326) into Web Mercator meters (SRID 3857) on the fly, seamlessly serving projected data to our ArcGIS frontend and Vector Tile engine.
 
 **Why:** This design bypasses rigid relational constraints, enabling users to upload *any* valid spatial data file without breaking the database schema.
 
@@ -94,6 +97,15 @@ We executed a massive refactoring phase adhering to modern Angular best practice
 ### Challenge 3: Continuous Compile Errors during Refactoring
 * **The Issue:** Migrating 650 lines into multi-tiered services resulted in broken references and `void` type assertions (e.g., testing `if(layer)` when the return type was broken).
 * **The Fix:** We strictly typed the returns in `MapCoreService` so that functions like `addGeoJsonLayerFromUrl` consistently returned a `GeoJSONLayer` object rather than `void`. This allowed the UI controller (`map.ts`) to successfully track the layer's rendering cycle.
+
+### Challenge 4: Missing Projection Definitions (`spatial_ref_sys` Bug)
+* **The Issue:** When generating Mapbox Vector Tiles, PostGIS threw the error `Cannot find SRID (3857) in spatial_ref_sys`. 
+* **The Cause:** The `spatial_ref_sys` table serves as a core translation dictionary, telling PostGIS exactly how to calculate and transform geographic coordinate systems. Due to an empty PostGIS initialization, the mathematical formulas for GPS (4326) and Web Mercator (3857) projections were missing.
+* **The Fix:** We manually executed SQL `INSERT` commands to inject the standard EPSG parameters (proj4text and srtext formulas) for SRIDs 3857 and 4326 directly into the `spatial_ref_sys` table. This allowed `ST_Transform` to successfully project coordinates on the fly.
+
+### Challenge 5: Handling 2D vs. 3D Map Rendering
+* **The Issue:** Vector Tile Layers (MVT) run blazingly fast in 2D but inherently do not support 3D volume extrusion (e.g., making buildings render with physical height). 
+* **The Fix:** We built a dynamic format swapper. When in 2D mode, the app loads the high-speed Vector Tile layers. When toggled to 3D mode, the frontend intelligently purges the tile layer and re-fetches the dataset as standard GeoJSON, passing it through a 3D extrusion renderer (`polygon-3d`). This achieved both maximum performance in 2D and high visual fidelity in 3D.
 
 ---
 
