@@ -208,14 +208,36 @@ export class MapCoreService {
     return oldLayer;
   }
 
-  private buildRenderers(geometryType: string): { renderer2D: any; renderer3D: any } {
+    private buildRenderers(geometryType: string): { renderer2D: any; renderer3D: any } {
     if (geometryType === 'Point' || geometryType === 'MultiPoint') {
       const r = { type: 'simple', symbol: { type: 'simple-marker', color: [255, 100, 0, 0.9], size: 8, outline: { color: [255, 255, 255], width: 1 } } };
       return { renderer2D: r, renderer3D: r };
     }
+    
     return {
-      renderer2D: { type: 'simple', symbol: { type: 'simple-fill', color: [255, 0, 255, 0.5], outline: { color: [255, 255, 255], width: 1 } } },
-      renderer3D: { type: 'simple', symbol: { type: 'polygon-3d', symbolLayers: [{ type: 'extrude', size: 15, material: { color: [0, 200, 255, 0.9] }, edges: { type: 'solid', color: [0, 80, 120, 1.0], size: 0.5 } }] } }
+      renderer2D: { 
+        type: 'simple', 
+        symbol: { type: 'simple-fill', color: [255, 0, 255, 0.5], outline: { color: [255, 255, 255], width: 1 } } 
+      },
+      renderer3D: { 
+        type: 'simple', 
+        // Default symbol rendering engine
+        symbol: { 
+            type: 'polygon-3d', 
+            symbolLayers: [{ 
+                type: 'extrude', 
+                size: 15, // Fallback if no height is provided
+                material: { color: [0, 200, 255, 0.9] }, 
+                edges: { type: 'solid', color: [0, 80, 120, 1.0], size: 0.5 } 
+            }] 
+        },
+        // 🌟 Magic happens here: Dynamically read 'height' from our database property!
+        visualVariables: [{
+          type: "size",
+          field: "height",
+          valueUnit: "meters"
+        }]
+      }
     };
   }
 

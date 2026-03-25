@@ -387,14 +387,32 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   private saveFeatureToExistingFile(layerId: string, geometry: any) {
-    if (!confirm('Would you like to save this new building to the currently viewed dataset?')) return;
+    if (!confirm('Would you like to save this new shape to the currently viewed dataset?')) return;
     
+    // 1. Gather custom properties from the user via prompts
+    const featureName = prompt('Enter a Name for this feature:', 'New Geometry') || 'New Geometry';
+    let heightVal = 20;
+
+    if (geometry.type === 'Polygon' || geometry.type === 'polygon') {
+      const h = prompt('Enter Building Height (meters):', '20');
+      if (h && !isNaN(Number(h))) {
+        heightVal = Number(h);
+      }
+    }
+
+    const properties = { 
+      name: featureName,
+      height: heightVal // <--- Custom height being saved to the database!
+    };
+
     this.mapState.startLoading('Saving feature to existing layer...');
-    this.layerService.addFeatureToLayer(layerId, geometry, { name: 'New Geometry' }).subscribe({
+    
+    // 2. Post to the backend (Your backend addFeature maps this dynamically to JSONB)
+    this.layerService.addFeatureToLayer(layerId, geometry, properties).subscribe({
       next: () => {
         this.mapState.stopLoading();
         this.layerService.emitToast('✅ Attached to current file successfully!');
-        this.refreshSingleGeoJsonLayer(layerId); // Refresh map to show it
+        this.refreshSingleGeoJsonLayer(layerId); // 3. Auto-refreshes the layer!
       },
       error: () => {
         this.mapState.stopLoading();
@@ -407,12 +425,20 @@ export class MapComponent implements OnInit, OnDestroy {
     const fileName = prompt('Enter a name for your NEW spatial file:', `Drawn_${type}_${Date.now()}`);
     if (!fileName) return;
 
+    let heightVal = 20;
+    if (type === 'polygon') {
+      const h = prompt('Enter Building Height (meters):', '20');
+      if (h && !isNaN(Number(h))) {
+        heightVal = Number(h);
+      }
+    }
+
     // Convert the isolated GeoJSON feature into a fully standard GeoJSON file map
     const featureCollection = {
       type: "FeatureCollection",
       features: [{
         type: "Feature",
-        properties: { name: fileName },
+        properties: { name: fileName, height: heightVal }, 
         geometry: geometry
       }]
     };
