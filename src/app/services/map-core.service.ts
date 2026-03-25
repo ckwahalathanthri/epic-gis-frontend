@@ -16,6 +16,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Sketch from '@arcgis/core/widgets/Sketch';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
+import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +31,7 @@ export class MapCoreService {
   public userLayers: any[] = [];
   public graphicsLayer?: GraphicsLayer;
   public sketchWidget?: Sketch;
+  public drawSketchViewModel?: SketchViewModel;
   public sceneLayerUrl: string | null = null;
   
   public formatLayers: {
@@ -287,6 +289,7 @@ export class MapCoreService {
 
   cancelEditSession(): void {
     this.sketchWidget?.cancel();
+    this.drawSketchViewModel?.cancel(); 
     this.graphicsLayer?.removeAll();
   }
 
@@ -325,27 +328,31 @@ export class MapCoreService {
       this.userLayers.push(this.graphicsLayer);
     }
 
-    if (!this.sketchWidget) {
-      this.sketchWidget = new Sketch({
-        layer: this.graphicsLayer,
-        view: this.view,
-        creationMode: 'single'
-      });
-      
-      // Listen for the draw completion event
-      this.sketchWidget.on('create', (event) => {
-        if (event.state === 'complete') {
-          const geoJson = this.convertToGeoJson(event.graphic.geometry);
-          onComplete(geoJson);
-        }
-        if (event.state === 'cancel') {
-          onComplete(null);
-        }
-      });
+    if (this.drawSketchViewModel) {
+      this.drawSketchViewModel.destroy();
     }
 
+    this.drawSketchViewModel = new SketchViewModel({
+      layer: this.graphicsLayer,
+      view: this.view,
+      updateOnGraphicClick: false,
+    });
+      
+      // Listen for the draw completion event
+    this.drawSketchViewModel.on('create', (event) => {
+      if (event.state === 'complete') {
+        const geoJson = this.convertToGeoJson(event.graphic.geometry);
+        onComplete(geoJson);
+        this.graphicsLayer?.removeAll(); // Clean up the raw drawn sketch
+      }
+      if (event.state === 'cancel') {
+        onComplete(null);
+        this.graphicsLayer?.removeAll();
+      }
+    });
+
     // Trigger the sketch tool
-    this.sketchWidget.create(type);
+    this.drawSketchViewModel.create(type);
   }
 
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {

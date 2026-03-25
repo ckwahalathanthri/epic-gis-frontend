@@ -255,6 +255,8 @@ export class MapComponent implements OnInit, OnDestroy {
     this.clickHandle?.remove();
 
     this.clickHandle = this.mapCore.view.on('click', (event: any) => {
+      if (this.mapState.isDrawingMode()) return;
+      
       this.mapCore.hitTestLayers(event).then(response => {
         const hit = (response?.results ?? []).find((r: any) => r.type === 'graphic');
 
