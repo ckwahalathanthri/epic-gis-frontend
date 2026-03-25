@@ -62,12 +62,11 @@ export class MapComponent implements OnInit, OnDestroy {
 
       if (layerId) {
          // You can formulate logic here to specifically fetch/load `layerId`
-         this.viewedLayerId = layerId || null;
-         if (this.viewedLayerId) this.loadBackendLayers(this.viewedLayerId);
-         this.loadBackendLayers(); 
+         this.viewedLayerId = layerId;
+         this.loadBackendLayers(this.viewedLayerId);
       } else {
          // Load normal map bounds
-         this.loadBackendLayers();
+         this.viewedLayerId = null;
       }
     });
   }
@@ -94,7 +93,7 @@ export class MapComponent implements OnInit, OnDestroy {
     this.mapCore.switchMode(is3d).then(() => {
       this.setupPopupHandler();
       // Reload layers into the new view (MVT if 2D, GeoJSON if 3D)
-      this.loadBackendLayers();
+      this.loadBackendLayers(this.viewedLayerId);
     });
   }
 
@@ -256,6 +255,8 @@ export class MapComponent implements OnInit, OnDestroy {
     this.clickHandle?.remove();
 
     this.clickHandle = this.mapCore.view.on('click', (event: any) => {
+      if (this.mapState.isDrawingMode()) return;
+
       this.mapCore.hitTestLayers(event).then(response => {
         const hit = (response?.results ?? []).find((r: any) => r.type === 'graphic');
 
@@ -283,7 +284,12 @@ export class MapComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadBackendLayers(targetLayerId?: string): void {
+  private loadBackendLayers(targetLayerId?: string | null): void {
+    // If no targetLayerId is provided, don't load anything by default
+    if (!targetLayerId) {
+      return;
+    }
+
     this.mapState.startLoading('Loading backend layers...');
     this.layerService.listLayers().subscribe({
       next: (layers: any) => {
@@ -330,23 +336,27 @@ export class MapComponent implements OnInit, OnDestroy {
             try {
               const layerTitle = l.name ?? `layer-${l.id}`;
               
-              if (this.mapState.is3DMode()) {
-                // FETCH AS GEOJSON FOR 3D EXTRUSION
-                this.layerService.getLayerGeoJson(l.id).subscribe({
-                  next: (geoJson: any) => {
-                    const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, layerTitle, l.id, true);
-                    if (layer) this.mapCore.view.whenLayerView(layer).then(checkAllLoaded).catch(checkAllLoaded);
-                    else checkAllLoaded();
-                  },
-                  error: checkAllLoaded
-                });
-              } else {
-                // USE LIGHTNING FAST VECTOR TILES FOR 2D
-                const layer = this.mapCore.addVectorTileLayerToMap(l.id, layerTitle);
-                if (layer) {
-                  this.mapCore.view.whenLayerView(layer).then(checkAllLoaded).catch(checkAllLoaded);
-                } else checkAllLoaded();
-              }
+              // Instead of conditionally splitting by Vector Tiles vs GeoJSON,
+              // always fetch as GeoJSON to guarantee custom user drawings load.
+              // ArcGIS is extremely fast rendering GeoJSON out-of-the-box anyway.
+              this.layerService.getLayerGeoJson(l.id).subscribe({
+                next: (geoJson: any) => {
+                  const is3d = this.mapState.is3DMode();
+                  const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, layerTitle, l.id, is3d);
+                  if (layer) {
+                    this.mapCore.view.whenLayerView(layer).then(() => {
+                       // Optional: once loaded, zoom to its extent if it's a specific viewed layer
+                       if (targetLayerId === l.id && geoJson?.features?.length > 0) {
+                           this.mapCore.view.goTo(layer.fullExtent || layer).catch(() => {});
+                       }
+                       checkAllLoaded();
+                    }).catch(checkAllLoaded);
+                  } else {
+                    checkAllLoaded();
+                  }
+                },
+                error: () => checkAllLoaded()
+              });
             } catch { checkAllLoaded(); }
           }
         }
@@ -393,7 +403,7 @@ export class MapComponent implements OnInit, OnDestroy {
     });
   }
 
-  private saveGeometryAsNewFile(type: string, geometry: any) {
+    private saveGeometryAsNewFile(type: string, geometry: any) {
     const fileName = prompt('Enter a name for your NEW spatial file:', `Drawn_${type}_${Date.now()}`);
     if (!fileName) return;
 
@@ -417,9 +427,41 @@ export class MapComponent implements OnInit, OnDestroy {
     this.layerService.uploadLayer(fakeFile, fileName).subscribe({
       next: (res: any) => {
         this.layerService.emitToast('✅ Created new layer successfully!');
-        this.loadBackendLayers(res.id); // Draw newly created layer
+        
+        // Render directly instead of relying on listLayers() which might be delayed
+        const layerId = res.id;
+        const layerTitle = res.layerName || fileName;
+
+        if (this.mapState.is3DMode()) {
+          // In 3D mode, fetch the GeoJSON to utilize the 3D 'extrude' render algorithms
+          this.layerService.getLayerGeoJson(layerId).subscribe({
+            next: (geoJson: any) => {
+              const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, layerTitle, layerId, true);
+              if (layer) {
+                this.mapCore.view.whenLayerView(layer).then(() => this.mapState.stopLoading()).catch(() => this.mapState.stopLoading());
+              } else {
+                this.mapState.stopLoading();
+              }
+            },
+            error: () => this.mapState.stopLoading()
+          });
+        } else {
+          // In 2D mode, use the fast vector tiles
+          const layer = this.mapCore.addVectorTileLayerToMap(layerId, layerTitle);
+          if (layer) {
+            this.mapCore.view.whenLayerView(layer).then(() => {
+              this.mapState.stopLoading();
+              this.cdr.detectChanges();
+            }).catch(() => this.mapState.stopLoading());
+          } else {
+            this.mapState.stopLoading();
+          }
+        }
       },
-      error: () => this.mapState.stopLoading()
+      error: () => {
+        this.mapState.stopLoading();
+        this.layerService.emitToast('❌ Failed to create new layer.');
+      }
     });
   }
 }

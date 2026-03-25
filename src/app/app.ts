@@ -161,4 +161,12 @@ export class AppComponent implements OnDestroy {
   triggerAddKML() {
     this.mapComp?.addKMLLayer();
   }
+
+  triggerStartDrawing(type: 'point' | 'polyline' | 'polygon') {
+    this.mapComp?.startDrawingSession(type);
+  }
+
+  triggerCancelDrawing() {
+    this.mapComp?.mapCore.cancelEditSession();
+  }
 }

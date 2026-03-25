@@ -16,6 +16,7 @@ import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer';
 import Graphic from '@arcgis/core/Graphic';
 import Sketch from '@arcgis/core/widgets/Sketch';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
+import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +31,7 @@ export class MapCoreService {
   public userLayers: any[] = [];
   public graphicsLayer?: GraphicsLayer;
   public sketchWidget?: Sketch;
+  public drawSketchViewModel?: SketchViewModel;
   public sceneLayerUrl: string | null = null;
   
   public formatLayers: {
@@ -287,6 +289,7 @@ export class MapCoreService {
 
   cancelEditSession(): void {
     this.sketchWidget?.cancel();
+    this.drawSketchViewModel?.cancel(); 
     this.graphicsLayer?.removeAll();
   }
 
@@ -317,35 +320,71 @@ export class MapCoreService {
   }
 
     // ── Phase 2: Create New Geometry ──────────────────────────────
-  
-  startDrawing(type: 'point' | 'polyline' | 'polygon', onComplete: (geojson: any) => void): void {
+
+      startDrawing(type: 'point' | 'polyline' | 'polygon', onComplete: (geoJsonUrl: any) => void): void {
+    if (!this.view) return;
+
     if (!this.graphicsLayer) {
       this.graphicsLayer = new GraphicsLayer();
       this.map.add(this.graphicsLayer);
       this.userLayers.push(this.graphicsLayer);
     }
 
-    if (!this.sketchWidget) {
-      this.sketchWidget = new Sketch({
-        layer: this.graphicsLayer,
-        view: this.view,
-        creationMode: 'single'
-      });
-      
-      // Listen for the draw completion event
-      this.sketchWidget.on('create', (event) => {
-        if (event.state === 'complete') {
-          const geoJson = this.convertToGeoJson(event.graphic.geometry);
-          onComplete(geoJson);
-        }
-        if (event.state === 'cancel') {
-          onComplete(null);
-        }
-      });
+    if (this.drawSketchViewModel) {
+      this.drawSketchViewModel.destroy();
     }
 
+    // Determine if the view is 3D
+    const is3d = this.view.type === '3d';
+
+    this.drawSketchViewModel = new SketchViewModel({
+      layer: this.graphicsLayer,
+      view: this.view,
+      updateOnGraphicClick: false,
+      polygonSymbol: is3d 
+        ? {
+            type: "polygon-3d", // Set the symbol type to 3D polygon
+            symbolLayers: [
+              {
+                type: "extrude", // Extrude the polygon into a building block
+                size: 20, // Default building height (e.g., 20 meters)
+                material: {
+                  color: [0, 150, 255, 0.8] // Adjust color as needed
+                },
+                edges: {
+                  type: "solid",
+                  color: [50, 50, 50, 1],
+                  size: 1
+                }
+              }
+            ]
+          } as any // Use as any to bypass TypeScript typing if needed
+        : {
+            type: "simple-fill", // Standard 2D polygon
+            color: [0, 150, 255, 0.4],
+            style: "solid",
+            outline: {
+              color: [0, 150, 255, 1],
+              width: 2
+            }
+          }
+    });
+
+    // Listen for the draw completion event
+    this.drawSketchViewModel.on('create', (event) => {
+      if (event.state === 'complete') {
+        const geoJson = this.convertToGeoJson(event.graphic.geometry);
+        onComplete(geoJson);
+        this.graphicsLayer?.removeAll(); // Clean up the raw drawn sketch
+      }
+      if (event.state === 'cancel') {
+        onComplete(null);
+        this.graphicsLayer?.removeAll();
+      }
+    });
+
     // Trigger the sketch tool
-    this.sketchWidget.create(type);
+    this.drawSketchViewModel.create(type);
   }
 
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {
