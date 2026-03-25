@@ -62,12 +62,11 @@ export class MapComponent implements OnInit, OnDestroy {
 
       if (layerId) {
          // You can formulate logic here to specifically fetch/load `layerId`
-         this.viewedLayerId = layerId || null;
-         if (this.viewedLayerId) this.loadBackendLayers(this.viewedLayerId);
-         this.loadBackendLayers(); 
+         this.viewedLayerId = layerId;
+         this.loadBackendLayers(this.viewedLayerId);
       } else {
          // Load normal map bounds
-         this.loadBackendLayers();
+         this.viewedLayerId = null;
       }
     });
   }
@@ -94,7 +93,7 @@ export class MapComponent implements OnInit, OnDestroy {
     this.mapCore.switchMode(is3d).then(() => {
       this.setupPopupHandler();
       // Reload layers into the new view (MVT if 2D, GeoJSON if 3D)
-      this.loadBackendLayers();
+      this.loadBackendLayers(this.viewedLayerId);
     });
   }
 
@@ -283,7 +282,12 @@ export class MapComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadBackendLayers(targetLayerId?: string): void {
+  private loadBackendLayers(targetLayerId?: string | null): void {
+    // If no targetLayerId is provided, don't load anything by default
+    if (!targetLayerId) {
+      return;
+    }
+
     this.mapState.startLoading('Loading backend layers...');
     this.layerService.listLayers().subscribe({
       next: (layers: any) => {
