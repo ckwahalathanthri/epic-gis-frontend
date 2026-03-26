@@ -405,8 +405,14 @@ export class MapCoreService {
       }
     });
 
-    // Trigger the sketch tool
-    this.drawSketchViewModel.create(type);
+    this.drawSketchViewModel.on('create', (event) => { /* ... */ });
+
+    // Trigger the sketch tool with freehand mode for lines and polygons
+    if (type === 'polyline' || type === 'polygon') {
+      this.drawSketchViewModel.create(type, { mode: 'freehand' });
+    } else {
+      this.drawSketchViewModel.create(type);
+    }
   }
 
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {
