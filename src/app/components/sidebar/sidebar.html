@@ -26,11 +26,14 @@
   <!-- 3. CREATION TOOLS -->
   <div class="sidebar-section">
     <h3>🏗️ Creation Tools</h3>
-    <button class="menu-btn" 
+    <button *ngIf="!mapState.is3DMode()"
+            class="menu-btn" 
             [class.active]="mapState.drawType() === 'point'" 
             (click)="toggleDraw('point')">📍 Draw Point</button>
             
-    <button class="menu-btn" 
+    <!-- Only show in 2D mode -->
+    <button *ngIf="!mapState.is3DMode()"
+            class="menu-btn" 
             [class.active]="mapState.drawType() === 'polyline'" 
             (click)="toggleDraw('polyline')">〰️ Draw Line</button>
             
