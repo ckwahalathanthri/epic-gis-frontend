@@ -407,10 +407,11 @@ export class MapCoreService {
 
     this.drawSketchViewModel.on('create', (event) => { /* ... */ });
 
-    // Trigger the sketch tool with freehand mode for lines and polygons
+    // Use freehand mode for both lines and polygons (buildings)
     if (type === 'polyline' || type === 'polygon') {
       this.drawSketchViewModel.create(type, { mode: 'freehand' });
     } else {
+      // For points, use the default click mode.
       this.drawSketchViewModel.create(type);
     }
   }
