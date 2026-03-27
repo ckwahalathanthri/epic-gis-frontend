@@ -343,7 +343,7 @@ export class MapCoreService {
 
     // ── Phase 2: Create New Geometry ──────────────────────────────
 
-      startDrawing(type: 'point' | 'polyline' | 'polygon', onComplete: (geoJsonUrl: any) => void): void {
+      startDrawing(type: 'point' | 'polyline' | 'polygon' | 'freehand-polygon', onComplete: (geoJsonUrl: any) => void): void {
     if (!this.view) return;
 
     if (!this.graphicsLayer) {
@@ -369,9 +369,9 @@ export class MapCoreService {
             symbolLayers: [
               {
                 type: "extrude", // Extrude the polygon into a building block
-                size: 20, // Default building height (e.g., 20 meters)
+                size: 20, 
                 material: {
-                  color: [0, 150, 255, 0.8] // Adjust color as needed
+                  color: [0, 150, 255, 0.8] 
                 },
                 edges: {
                   type: "solid",
@@ -380,7 +380,7 @@ export class MapCoreService {
                 }
               }
             ]
-          } as any // Use as any to bypass TypeScript typing if needed
+          } as any 
         : {
             type: "simple-fill", // Standard 2D polygon
             color: [0, 150, 255, 0.4],
@@ -393,20 +393,31 @@ export class MapCoreService {
     });
 
     // Listen for the draw completion event
+        // Listen for the draw completion event
     this.drawSketchViewModel.on('create', (event) => {
       if (event.state === 'complete') {
         const geoJson = this.convertToGeoJson(event.graphic.geometry);
-        onComplete(geoJson);
-        this.graphicsLayer?.removeAll(); // Clean up the raw drawn sketch
+        // Send ONLY the clean GeoJSON to the backend to prevent GeoTools from crashing
+        onComplete(geoJson); 
       }
       if (event.state === 'cancel') {
         onComplete(null);
-        this.graphicsLayer?.removeAll();
       }
     });
 
+    // Determine the actual ArcGIS shape and whether we need freehand mode
+    const isFreehand = (type === 'polyline' || type === 'freehand-polygon');
+    
+    // ArcGIS doesn't know what 'freehand-polygon' is, so we tell it to draw a 'polygon' 
+    // but pass the freehand flag!
+    const shapeToDraw = (type === 'freehand-polygon') ? 'polygon' : type;
+
     // Trigger the sketch tool
-    this.drawSketchViewModel.create(type);
+    if (isFreehand) {
+      this.drawSketchViewModel.create(shapeToDraw as any, { mode: 'freehand' });
+    } else {
+      this.drawSketchViewModel.create(shapeToDraw as any);
+    }
   }
 
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {

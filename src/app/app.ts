@@ -162,7 +162,7 @@ export class AppComponent implements OnDestroy {
     this.mapComp?.addKMLLayer();
   }
 
-  triggerStartDrawing(type: 'point' | 'polyline' | 'polygon') {
+  triggerStartDrawing(type: 'point' | 'polyline' | 'polygon'| 'freehand-polygon') {
     this.mapComp?.startDrawingSession(type);
   }
 

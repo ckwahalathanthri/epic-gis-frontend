@@ -26,17 +26,26 @@
   <!-- 3. CREATION TOOLS -->
   <div class="sidebar-section">
     <h3>🏗️ Creation Tools</h3>
-    <button class="menu-btn" 
+    <button *ngIf="!mapState.is3DMode()"
+            class="menu-btn" 
             [class.active]="mapState.drawType() === 'point'" 
             (click)="toggleDraw('point')">📍 Draw Point</button>
             
-    <button class="menu-btn" 
+    <!-- Only show in 2D mode -->
+    <button *ngIf="!mapState.is3DMode()"
+            class="menu-btn" 
             [class.active]="mapState.drawType() === 'polyline'" 
             (click)="toggleDraw('polyline')">〰️ Draw Line</button>
             
+        <!-- Renamed original button slightly for clarity -->
     <button class="menu-btn" 
             [class.active]="mapState.drawType() === 'polygon'" 
-            (click)="toggleDraw('polygon')">🏢 Draw Building</button>
+            (click)="toggleDraw('polygon')">🏢 Draw Building (Points)</button>
+
+    <!-- New Freehand button -->
+    <button class="menu-btn" 
+            [class.active]="mapState.drawType() === 'freehand-polygon'" 
+            (click)="toggleDraw('freehand-polygon')">🖍️ Draw Building (Freehand)</button>
 
     <button *ngIf="mapState.isDrawingMode()" 
             class="menu-btn cancel-btn" 

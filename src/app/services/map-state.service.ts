@@ -32,7 +32,7 @@ export class MapStateService {
 
   // --- Drawing State ---
   readonly isDrawingMode = signal<boolean>(false);
-  readonly drawType = signal<'point' | 'polyline' | 'polygon' | null>(null);
+  readonly drawType = signal<'point' | 'polyline' | 'polygon' | 'freehand-polygon' | null>(null);
 
   // --- Actions / Mutations ---
 
@@ -89,7 +89,7 @@ export class MapStateService {
     }
   }
 
-  setDrawingMode(isDrawing: boolean, type: 'point' | 'polyline' | 'polygon' | null = null) {
+  setDrawingMode(isDrawing: boolean, type: 'point' | 'polyline' | 'polygon' | 'freehand-polygon' | null = null) {
     this.isDrawingMode.set(isDrawing);
     this.drawType.set(type);
   }

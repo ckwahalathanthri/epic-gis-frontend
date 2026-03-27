@@ -16,8 +16,9 @@ export class SidebarComponent {
   @Output() onUploadEvent = new EventEmitter<any>();
   @Output() onAddWebLayer = new EventEmitter<void>();
   @Output() onAddKML = new EventEmitter<void>();
-  @Output() onStartDrawing = new EventEmitter<'point' | 'polyline' | 'polygon'>();
+  @Output() onStartDrawing = new EventEmitter<'point' | 'polyline' | 'polygon' | 'freehand-polygon'>();
   @Output() onCancelDrawing = new EventEmitter<void>();
+  
 
   constructor(
     private router: Router, 
@@ -33,7 +34,7 @@ export class SidebarComponent {
     this.onUploadEvent.emit(event);
   }
 
-  toggleDraw(type: 'point' | 'polyline' | 'polygon') {
+  toggleDraw(type: 'point' | 'polyline' | 'polygon' | 'freehand-polygon') {
     if (this.mapState.drawType() === type) {
       this.cancelDraw();
     } else {
