@@ -369,7 +369,7 @@ export class MapComponent implements OnInit, OnDestroy {
     });
   }
 
-    startDrawingSession(type: 'point' | 'polyline' | 'polygon') {
+    startDrawingSession(type: 'point' | 'polyline' | 'polygon' | 'freehand-polygon'): void {
     // 1. Tell ArcGIS to start drawing
     this.mapCore.startDrawing(type, (geoJsonGeometry) => {
       this.mapState.setDrawingMode(false, null); // Stop UI spin
@@ -426,7 +426,7 @@ export class MapComponent implements OnInit, OnDestroy {
     if (!fileName) return;
 
     let heightVal = 20;
-    if (type === 'polygon') {
+    if (type === 'polygon' || type === 'freehand-polygon') {
       const h = prompt('Enter Building Height (meters):', '20');
       if (h && !isNaN(Number(h))) {
         heightVal = Number(h);
