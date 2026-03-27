@@ -393,10 +393,12 @@ export class MapCoreService {
     });
 
     // Listen for the draw completion event
+        // Listen for the draw completion event
     this.drawSketchViewModel.on('create', (event) => {
       if (event.state === 'complete') {
         const geoJson = this.convertToGeoJson(event.graphic.geometry);
-        onComplete({ ...geoJson, _graphic: event.graphic });
+        // Send ONLY the clean GeoJSON to the backend to prevent GeoTools from crashing
+        onComplete(geoJson); 
       }
       if (event.state === 'cancel') {
         onComplete(null);
