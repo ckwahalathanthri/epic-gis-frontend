@@ -113,4 +113,8 @@ export class LayerService {
     return this.http.post(`${this.baseUrl}/${layerId}/features`, { properties, geometry });
   }
 
+  deleteFeature(layerId: string, featureId: number): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/${layerId}/features/${featureId}`);
+  }
+
 }

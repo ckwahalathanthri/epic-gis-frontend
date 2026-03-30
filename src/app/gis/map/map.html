@@ -10,12 +10,10 @@
     (onEdit)="openEditFromPopup()">
   </app-map-popup>
 
-  <!-- <app-map-toolbar 
-    (onToggle3D)="toggle3D()"
-    (onUpload)="uploadFile($event)"
-    (onAddFeatureLayer)="addFeatureLayer()"
-    (onAddKML)="addKMLLayer()">
-  </app-map-toolbar> -->
+    <app-map-popup 
+    (onEdit)="openEditFromPopup()"
+    (onDelete)="deleteFeatureFromPopup()">
+  </app-map-popup>
 
   <!-- Core Map Rendering Container -->
   <div id="mapViewDiv" class="map-view"></div>
