@@ -34,6 +34,9 @@ import { MapStateService } from '../../services/map-state.service';
         <button class="btn-primary" (click)="onEdit.emit()">
           ✏️ Edit Feature
         </button>
+        <button class="btn-primary" style="background-color: #d93838;" (click)="onDelete.emit()">
+          🗑️ Delete
+        </button>
       </div>
     </div>
   `
@@ -41,4 +44,5 @@ import { MapStateService } from '../../services/map-state.service';
 export class MapPopupComponent {
   constructor(public mapState: MapStateService) {}
   @Output() onEdit = new EventEmitter<void>();
+  @Output() onDelete = new EventEmitter<void>();
 }

@@ -386,6 +386,40 @@ export class MapComponent implements OnInit, OnDestroy {
     });
   }
 
+    deleteFeatureFromPopup(): void {
+    const graphic = this.mapState.popupGraphic();
+    const backendLayerId = this.mapState.popupBackendLayerId();
+    if (!graphic || !backendLayerId) return;
+
+    const attrs = graphic.attributes ?? {};
+    const featureId = attrs.F_db_id ?? attrs._db_id ?? null;
+
+    if (!featureId) {
+      this.layerService.emitToast('❌ Cannot delete. No database ID found.');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to permanently delete this item?')) return;
+
+    this.mapState.startLoading('Deleting feature...');
+    this.layerService.deleteFeature(backendLayerId, featureId).subscribe({
+      next: () => {
+        this.ngZone.run(() => {
+          this.mapState.closeFeaturePopup();
+          this.layerService.emitToast('✅ Feature deleted successfully!');
+          this.refreshSingleGeoJsonLayer(backendLayerId);
+        });
+      },
+      error: (err: any) => {
+        this.ngZone.run(() => {
+          console.error('Delete failed', err);
+          this.layerService.emitToast('❌ Delete failed.');
+          this.mapState.stopLoading();
+        });
+      }
+    });
+  }
+
   private saveFeatureToExistingFile(layerId: string, geometry: any) {
     if (!confirm('Would you like to save this new shape to the currently viewed dataset?')) return;
     
