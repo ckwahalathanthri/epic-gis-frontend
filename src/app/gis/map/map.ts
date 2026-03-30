@@ -216,35 +216,28 @@ export class MapComponent implements OnInit, OnDestroy {
     }
 
     this.mapState.startLoading('Refreshing map data...');
-    try {
-      if (this.mapState.is3DMode()) {
-        // FETCH AS GEOJSON FOR 3D EXTRUSION
-        this.layerService.getLayerGeoJson(backendLayerId).subscribe({
-          next: (geoJson: any) => {
-            const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, oldLayer.title, backendLayerId, true);
-            if (layer) {
-              this.mapCore.view.whenLayerView(layer).then(() => {
-                this.mapState.stopLoading();
-                this.cdr.detectChanges();
-              }).catch(() => this.mapState.stopLoading());
-            } else {
-              this.mapState.stopLoading();
-            }
-          },
-          error: () => this.mapState.stopLoading()
-        });
-      } else {
-        // USE LIGHTNING FAST VECTOR TILES FOR 2D
-        const layer = this.mapCore.addVectorTileLayerToMap(backendLayerId, oldLayer.title);
-        if (layer) {
+        try {
+      // ALWAYS load as GeoJSON to ensure hitTest and popups continue working
+      this.layerService.getLayerGeoJson(backendLayerId).subscribe({
+        next: (geoJson: any) => {
+          const is3d = this.mapState.is3DMode();
+          // Force it to load via addGeoJsonLayerToMap regardless of 2D/3D
+          const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, oldLayer.title, backendLayerId, is3d);
+          
+          if (layer) {
             this.mapCore.view.whenLayerView(layer).then(() => {
-               this.mapState.stopLoading();
-               this.cdr.detectChanges();
+              this.mapState.stopLoading();
+              this.cdr.detectChanges();
             }).catch(() => this.mapState.stopLoading());
-        } else {
-           this.mapState.stopLoading();
+          } else {
+            this.mapState.stopLoading();
+          }
+        },
+        error: (err) => {
+          console.error("Failed to refresh layer geometry", err);
+          this.mapState.stopLoading();
         }
-      }
+      });
     } catch (e) {
       this.mapState.stopLoading();
     }
@@ -459,6 +452,8 @@ export class MapComponent implements OnInit, OnDestroy {
     const fileName = prompt('Enter a name for your NEW spatial file:', `Drawn_${type}_${Date.now()}`);
     if (!fileName) return;
 
+    
+
     let heightVal = 20;
     if (type === 'polygon' || type === 'freehand-polygon') {
       const h = prompt('Enter Building Height (meters):', '20');
@@ -491,6 +486,7 @@ export class MapComponent implements OnInit, OnDestroy {
         // Render directly instead of relying on listLayers() which might be delayed
         const layerId = res.id;
         const layerTitle = res.layerName || fileName;
+        const is3d = this.mapState.is3DMode();
 
         if (this.mapState.is3DMode()) {
           // In 3D mode, fetch the GeoJSON to utilize the 3D 'extrude' render algorithms
@@ -498,7 +494,10 @@ export class MapComponent implements OnInit, OnDestroy {
             next: (geoJson: any) => {
               const layer = this.mapCore.addGeoJsonLayerToMap(geoJson, layerTitle, layerId, true);
               if (layer) {
-                this.mapCore.view.whenLayerView(layer).then(() => this.mapState.stopLoading()).catch(() => this.mapState.stopLoading());
+                this.mapCore.view.whenLayerView(layer).then(() => {
+                  this.mapState.stopLoading();
+                  this.cdr.detectChanges();
+                }).catch(() => this.mapState.stopLoading());
               } else {
                 this.mapState.stopLoading();
               }
