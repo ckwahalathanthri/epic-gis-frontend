@@ -53,4 +53,33 @@ export class MapEditPanelComponent {
   constructor(public mapState: MapStateService) {}
   @Output() onSave = new EventEmitter<void>();
   @Output() onCancel = new EventEmitter<void>();
+
+  addFloor(feature: any) {
+    feature.properties.floors += 1;
+    this.reRenderBuilding(feature);
+    this.saveFeature(feature);
+}
+
+  removeFloor(feature: any) {
+    if (feature.properties.floors > 1) {
+        feature.properties.floors -= 1;
+        this.reRenderBuilding(feature);
+        this.saveFeature(feature);
+    }
+  }
+
+  reRenderBuilding(feature: any) {
+    // Update the UI state to reflect the new floor count
+    const floorProp = this.mapState.editProperties().find((p: any) => p.key === 'floors');
+    if (floorProp) {
+        floorProp.value = feature.properties.floors;
+    }
+    
+    // Note: The actual 3D re-rendering in Cesium should be handled by an effect or subscription 
+    // in the Map component that listens to these property changes.
+  }
+
+  saveFeature(feature: any) {
+    // TODO: Implement feature saving logic
+  }
 }

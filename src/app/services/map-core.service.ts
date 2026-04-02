@@ -18,6 +18,11 @@ import Sketch from '@arcgis/core/widgets/Sketch';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import SketchViewModel from '@arcgis/core/widgets/Sketch/SketchViewModel';
 
+declare var console: any;
+declare var document: any;
+declare var Blob: any;
+declare var URL: any;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -97,6 +102,7 @@ export class MapCoreService {
       this.view = this.mapView;
     }
 
+
     this.view.when(() => {
       this.addDefaultWidgets();
       this.restoreViewpoint(currentViewpoint, is3D);
@@ -116,15 +122,58 @@ export class MapCoreService {
   addGeoJsonLayerToMap(geoJson: any, title: string, backendLayerId: string, is3DMode: boolean): GeoJSONLayer | null {
     if (!geoJson?.features?.length) { console.warn('GeoJSON has no features:', title); return null; }
 
-    const { renderer2D, renderer3D } = this.buildRenderers(geoJson.features[0].geometry.type);
-    const blob = new Blob([JSON.stringify(geoJson)], { type: 'application/json' });
+    const geometryType = geoJson.features[0].geometry.type;
+    const { renderer2D, renderer3D } = this.buildRenderers(geometryType);
+
+    // 🌟 3D Floor Visualizer Logic 🌟
+    let processedGeoJson = geoJson;
+    if (is3DMode && (geometryType === 'Polygon' || geometryType === 'MultiPolygon')) {
+      const newFeatures: any[] = [];
+      let cloneIdCounter = 1;
+      for (const feature of geoJson.features) {
+        let floors = 1;
+        if (feature.properties) {
+          // Detect floors property ignoring case!
+          const fRaw = feature.properties.floors ?? feature.properties.Floors ?? feature.properties.FLOORS ?? feature.properties.FLOOR;
+          if (fRaw !== undefined && fRaw !== null) {
+            const parsed = parseInt(String(fRaw), 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              floors = parsed;
+            }
+          }
+        }
+
+        if (floors > 1) {
+          // Clone the geometry multiple times to create a stack
+          for (let i = 0; i < floors; i++) {
+            const clonedFeature = JSON.parse(JSON.stringify(feature));
+            clonedFeature.properties.floor_base_height_m = i * 3; // Shift up by 3 meters each time
+            clonedFeature.properties.OBJECTID_CLONE = cloneIdCounter++;
+            newFeatures.push(clonedFeature);
+          }
+        } else {
+          const clonedFeature = JSON.parse(JSON.stringify(feature));
+          clonedFeature.properties.floor_base_height_m = 0;
+          clonedFeature.properties.OBJECTID_CLONE = cloneIdCounter++;
+          newFeatures.push(clonedFeature);
+        }
+      }
+      processedGeoJson = { ...geoJson, features: newFeatures };
+    }
+
+    const blob = new Blob([JSON.stringify(processedGeoJson)], { type: 'application/json' });
     const blobUrl = URL.createObjectURL(blob);
 
     const layer = new GeoJSONLayer({
       url: blobUrl, title,
       renderer: is3DMode ? renderer3D : renderer2D,
-      elevationInfo: { mode: 'on-the-ground' },
-      outFields: ['*']
+      elevationInfo: is3DMode ? { 
+        mode: 'relative-to-ground',
+        // Reads the height we assigned earlier to place it in the sky!
+        featureExpressionInfo: { expression: "$feature.floor_base_height_m" }
+      } : { mode: 'on-the-ground' },
+      outFields: ['*'],
+      objectIdField: is3DMode ? 'OBJECTID_CLONE' : undefined
     });
 
     (layer as any).customRenderer2D = renderer2D;
@@ -221,20 +270,17 @@ export class MapCoreService {
       },
       renderer3D: { 
         type: 'simple', 
-        // Default symbol rendering engine
         symbol: { 
             type: 'polygon-3d', 
             symbolLayers: [{ 
-                type: 'extrude', 
-                size: 15, // Fallback if no height is provided
+                type: 'extrude',
                 material: { color: [0, 200, 255, 0.9] }, 
-                edges: { type: 'solid', color: [0, 80, 120, 1.0], size: 0.5 } 
+                edges: { type: 'solid', color: [0, 80, 120, 1.0], size: 1.5 } 
             }] 
         },
-        // 🌟 Magic happens here: Dynamically read 'height' from our database property!
         visualVariables: [{
           type: "size",
-          field: "height",
+          valueExpression: "2.8",
           valueUnit: "meters"
         }]
       }
@@ -423,21 +469,7 @@ export class MapCoreService {
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {
     for (const { title, geoJsonData, r2d, r3d, backendLayerId } of snapshots) {
       try {
-        const newBlob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
-        const newUrl = URL.createObjectURL(newBlob);
-        const newLayer = new GeoJSONLayer({
-          url: newUrl, title,
-          renderer: is3d ? r3d : r2d,
-          elevationInfo: { mode: 'on-the-ground' },
-          outFields: ['*']
-        });
-        (newLayer as any).customRenderer2D = r2d;
-        (newLayer as any).customRenderer3D = r3d;
-        (newLayer as any)._geoJsonData = geoJsonData;
-        (newLayer as any)._blobUrl = newUrl;
-        (newLayer as any)._backendLayerId = backendLayerId;
-        this.map.add(newLayer);
-        this.userLayers.push(newLayer);
+        this.addGeoJsonLayerToMap(geoJsonData, title, backendLayerId, is3d);
       } catch (e) {
         console.warn('Failed to restore layer', title, e);
       }
