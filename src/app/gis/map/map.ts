@@ -419,17 +419,25 @@ export class MapComponent implements OnInit, OnDestroy {
     // 1. Gather custom properties from the user via prompts
     const featureName = prompt('Enter a Name for this feature:', 'New Geometry') || 'New Geometry';
     let heightVal = 20;
+    let floorsVal = 1;
 
-    if (geometry.type === 'Polygon' || geometry.type === 'polygon') {
-      const h = prompt('Enter Building Height (meters):', '20');
-      if (h && !isNaN(Number(h))) {
-        heightVal = Number(h);
+    if (geometry.type === 'Polygon' || geometry.type === 'polygon' || geometry.type === 'MultiPolygon' || geometry.type === 'multipolygon') {
+      const f = prompt('Enter number of floors:', '1');
+      if (f && !isNaN(Number(f)) && Number(f) > 0) {
+        floorsVal = Number(f);
+        heightVal = floorsVal * 3; // Calculate total approximate height based on floors (3m per floor)
+      } else {
+        const h = prompt('Enter Building Height (meters):', '20');
+        if (h && !isNaN(Number(h))) {
+          heightVal = Number(h);
+        }
       }
     }
 
     const properties = { 
       name: featureName,
-      height: heightVal // <--- Custom height being saved to the database!
+      height: heightVal, // <--- Custom height being saved to the database!
+      floors: floorsVal
     };
 
     this.mapState.startLoading('Saving feature to existing layer...');
@@ -455,10 +463,17 @@ export class MapComponent implements OnInit, OnDestroy {
     
 
     let heightVal = 20;
-    if (type === 'polygon' || type === 'freehand-polygon') {
-      const h = prompt('Enter Building Height (meters):', '20');
-      if (h && !isNaN(Number(h))) {
-        heightVal = Number(h);
+    let floorsVal = 1;
+    if (type === 'polygon' || type === 'freehand-polygon' || geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') {
+      const f = prompt('Enter number of floors:', '1');
+      if (f && !isNaN(Number(f)) && Number(f) > 0) {
+        floorsVal = Number(f);
+        heightVal = floorsVal * 3; // Calculate total approximate height based on floors
+      } else {
+        const h = prompt('Enter Building Height (meters):', '20');
+        if (h && !isNaN(Number(h))) {
+          heightVal = Number(h);
+        }
       }
     }
 
@@ -467,7 +482,7 @@ export class MapComponent implements OnInit, OnDestroy {
       type: "FeatureCollection",
       features: [{
         type: "Feature",
-        properties: { name: fileName, height: heightVal }, 
+        properties: { name: fileName, height: heightVal, floors: floorsVal }, 
         geometry: geometry
       }]
     };
