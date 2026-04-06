@@ -387,9 +387,10 @@ export class MapCoreService {
     return snapshots;
   }
 
+
     // ── Phase 2: Create New Geometry ──────────────────────────────
 
-      startDrawing(type: 'point' | 'polyline' | 'polygon' | 'freehand-polygon', onComplete: (geoJsonUrl: any) => void): void {
+    startDrawing(type: 'point' | 'polyline' | 'polygon' | 'freehand-polygon', onComplete: (geoJsonUrl: any) => void): void {
     if (!this.view) return;
 
     if (!this.graphicsLayer) {
@@ -465,6 +466,7 @@ export class MapCoreService {
       this.drawSketchViewModel.create(shapeToDraw as any);
     }
   }
+
 
   private restoreGeoJsonLayers(snapshots: any[], is3d: boolean): void {
     for (const { title, geoJsonData, r2d, r3d, backendLayerId } of snapshots) {
