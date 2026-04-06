@@ -274,15 +274,16 @@ export class MapCoreService {
             type: 'polygon-3d', 
             symbolLayers: [{ 
                 type: 'extrude',
+                size:2.8,
                 material: { color: [0, 200, 255, 0.9] }, 
                 edges: { type: 'solid', color: [0, 80, 120, 1.0], size: 1.5 } 
             }] 
         },
-        visualVariables: [{
-          type: "size",
-          valueExpression: "2.8",
-          valueUnit: "meters"
-        }]
+        // visualVariables: [{
+        //   type: "size",
+        //   valueExpression: "2.8",
+        //   valueUnit: "meters"
+        // }]
       }
     };
   }

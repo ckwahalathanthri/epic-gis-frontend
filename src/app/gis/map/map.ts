@@ -366,6 +366,9 @@ export class MapComponent implements OnInit, OnDestroy {
     // 1. Tell ArcGIS to start drawing
     this.mapCore.startDrawing(type, (geoJsonGeometry) => {
       this.mapState.setDrawingMode(false, null); // Stop UI spin
+
+      this.mapCore.cancelEditSession();
+
       if (!geoJsonGeometry) return; // User cancelled
 
       // 2. Decide how to save based on if we are viewing a layer or starting fresh
@@ -501,6 +504,8 @@ export class MapComponent implements OnInit, OnDestroy {
         // Render directly instead of relying on listLayers() which might be delayed
         const layerId = res.id;
         const layerTitle = res.layerName || fileName;
+        this.viewedLayerId = layerId;
+        window.history.replaceState(null, '', `?layer=${layerId}`);
         const is3d = this.mapState.is3DMode();
 
         if (this.mapState.is3DMode()) {
